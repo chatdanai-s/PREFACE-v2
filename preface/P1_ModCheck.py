@@ -10,9 +10,9 @@ import datetime as dt
 
 
 # urls for TEPCat files
-Targeturl1 = 'http://www.astro.keele.ac.uk/jkt/tepcat/allplanets-csv.csv'
-Targeturl2 = 'http://www.astro.keele.ac.uk/jkt/tepcat/kepplanets-csv.csv'
-Targeturl3 = 'http://www.astro.keele.ac.uk/jkt/tepcat/observables.csv'
+target_url_1 = 'http://www.astro.keele.ac.uk/jkt/tepcat/allplanets-csv.csv'
+target_url_2 = 'http://www.astro.keele.ac.uk/jkt/tepcat/kepplanets-csv.csv'
+target_url_3 = 'http://www.astro.keele.ac.uk/jkt/tepcat/observables.csv'
 
 # Headers to be used in master csv. Star properties first, then planet.
 Head = ['Planet',
@@ -84,21 +84,21 @@ def Check(csvpath):
 
     if now - LegA >= dt.timedelta(7.):
         print('[ModCheck] Retrieving updated allplanets-csv.csv file: please stand by...')
-        urllib.request.urlretrieve(Targeturl1, rf'{csvpath}/allplanets-csv.csv')
+        urllib.request.urlretrieve(target_url_1, rf'{csvpath}/allplanets-csv.csv')
         print('>> Retrieval complete!')
     else:
         print('[ModCheck] allplanets-csv.csv is up to date.')
         
     if now - LegK >= dt.timedelta(7.):
         print('[ModCheck] Retrieving updated kepplanets-csv.csv file: please stand by...')
-        urllib.request.urlretrieve(Targeturl2, rf'{csvpath}/kepplanets-csv.csv')    
+        urllib.request.urlretrieve(target_url_2, rf'{csvpath}/kepplanets-csv.csv')    
         print('>> Retrieval complete!')
     else:
         print('[ModCheck] kepplanets-csv.csv is up to date.')
         
     if now - LegO >= dt.timedelta(7.):
         print('[ModCheck] Retrieving updated observables.csv file: please stand by...')
-        urllib.request.urlretrieve(Targeturl3, rf'{csvpath}/observables.csv')
+        urllib.request.urlretrieve(target_url_3, rf'{csvpath}/observables.csv')
         print('>> Retrieval complete!')
     else:
         print('[ModCheck] observables.csv is up to date.')

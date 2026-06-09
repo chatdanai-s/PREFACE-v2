@@ -116,4 +116,4 @@ def Cleaner(csvrankpath, csvoutpath, csvendpath, csvscorepath,
     dc.to_csv(rf'{csvscorepath}/CumulativeObsScore_for_{Inst}_{Filter}-band,{Run_Mode}_{Metric_Mode}-modes,{Add_Noise},{Defocus},{ViableCut}_Cut, {ObsStart.strftime("%b_%d_%Y")}_to_{ObsEnd.strftime("%b_%d_%Y")}.csv',
               index=False)
     
-    print('[PostCleaner] Cumulative observability scores calculated.\nPipeline run complete.')
+    print('[PostCleaner] Cumulative observability scores calculated.')

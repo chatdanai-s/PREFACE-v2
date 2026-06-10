@@ -9,16 +9,16 @@ import astropy.units as u
 from bisect import bisect_left
 
 # Functions to calculate area ratio, row-by-row.
-def ARatio(row):
+def AreaRatio(row):
     Rp = (row['Rp'] * u.jupiterRad).to(u.solRad)
     Rs = (row['R*'] * u.solRad)
-    RRatio = (Rp/Rs) ** 2
-    return RRatio
+    AreaRatio = (Rp/Rs) ** 2
+    return AreaRatio
     
 # Proxy for scale height, units of km.
 # Assumes atmosphere of solar metallicity ideal gas.
 # One entry has gravity of 0; exception is needed to avoid dividing by 0!
-def HProx(row):
+def H_Proxy(row):
     kB = 1.380649e-23
     mu_m = 2.33 * 1.6605e-27
     gp = row['gp']
@@ -30,29 +30,27 @@ def HProx(row):
     if Teq == np.nan:
         Teq = row['Teq_Calc']
         
-    HM = ((kB * Teq) / (mu_m * gp)) * u.m
-    HM = (HM.to(u.km)).value
-    return HM
+    scaleHeight = ((kB * Teq) / (mu_m * gp)) * u.m
+    scaleHeight = (scaleHeight.to(u.km)).value
+    return scaleHeight
 
 # Calculates equilibrium temperature for all planets using stellar temps.
-def TPCalc(row):
+def Teq_Calc(row):
     # Recover semi-major axis from period and stellar mass. (Assume Mp << M*)
     P = (row['P (day)'] * u.d).to(u.yr)
     Ms = row['M*']
-
     a = (np.cbrt(P**2 * Ms)).value
     
     # For Bond albedo (across all EM wavelengths) = 0 and full heat redistribution.
     Teff = row['Teff']
     Rs = (row['R*'] * u.solRad).to(u.AU)
-
     Teq = Teff * np.sqrt(Rs / (2 * a*u.AU))
 
     return a, Teq
 
 # Returns a flag based on the three supplied references for each object.
 # If all different, well-studied. If all identical, not followed up at all!
-def RefFlag(row):
+def RefNo_Flag(row):
     all_identical = row['Discovery_Reference'] == row['Recent_Reference'] == row['Ephemeris_Reference']
     
     all_different = all([row['Discovery_Reference'] != row['Recent_Reference'],
@@ -86,32 +84,33 @@ def takeClosest(Tsort, i):
         return after
     else:
         return before
-
-           
+     
 # Central function to build WorkingTEPSet.
-# csvpath argument MUST be csvcorepath from the master shell.
-def WorkBuilder(csvpath):
-    # Import the following dataframes:
-    # di -- Full TEPSet with all b
-    # dj -- Teff and Color by spectral type
-    # dc -- Vmag spectral corrections
-    
+def WorkBuilder(CSV_core_folder):
+    # Locate files (formerly imported as di, dj, dc)
+    tepset_csv_path = CSV_core_folder / 'FullTEPSetWithAllImpacts.csv'
+    speccolor_csv_path = CSV_core_folder / 'SpecConverter.csv'
+    vmagcorr_csv_path = CSV_core_folder / 'V_Spectral_Corrections_Bank.csv'
+    workingtep_csv_path = CSV_core_folder / 'WorkingTEPSet.csv'
+
+
     # TEPCat only keeps V and K-magnitudes - any others must be calculated for each star.
     # See www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt for conversion table.          
     # Reads in bank of spectral conversions, creates sorted list of temperature cut-offs.
     # Also reads in a table of corrections such that V_TEPCat = V_calculated.
 
-    di = pd.read_csv(rf'{csvpath}/FullTEPSetWithAllImpacts.csv', skipinitialspace=True)
+    df_tep = pd.read_csv(tepset_csv_path, skipinitialspace=True)
 
     Fields = ['Teff_SpT', 'B-V', 'U-B', 'V-Rc', 'V-Ic', 'V-Ks', 'J-H', 'H-K']
-    dj = pd.read_csv(rf'{csvpath}/SpecConverter.csv', usecols=Fields, skipinitialspace=True, na_values=0)
-    dj['U-B'] = dj['U-B'].replace('...', np.nan)
+    df_spec = pd.read_csv(speccolor_csv_path, usecols=Fields, skipinitialspace=True, na_values=0)
+    df_spec['U-B'] = df_spec['U-B'].replace('...', np.nan)
 
-    dc = pd.read_csv(rf'{csvpath}/V_Spectral_Corrections_Bank.csv')
+    df_corr = pd.read_csv(vmagcorr_csv_path)
 
-    Tmps = dj['Teff_SpT'].tolist()      # Descending temperature of spectral type
-    Cors = dc['Vmag_List'].tolist()     # List of Vmags with correction
-    Tsort = Tmps[::-1]                  # Make Tmps ascendingly sorted
+
+    Tmps = df_spec['Teff_SpT'].tolist()     # Descending temperature of spectral type
+    Cors = df_corr['Vmag_List'].tolist()    # List of Vmags with correction
+    Tsort = Tmps[::-1]                      # Make Tmps ascendingly sorted
     
 
     def MagCalc(row):            
@@ -124,21 +123,21 @@ def WorkBuilder(csvpath):
         # See SpecConverterExplorer.py for more.
         
         # Retrieve relevant rows of two dataframes
-        R = np.where(dj['Teff_SpT'] == takeClosest(Tsort, row['Teff']))[0][0]  # Row of dj with closest Teff
-        C = np.where(dc['Vmag_List'] == takeClosest(Cors, row['Vmag']))[0][0]  # Correction index of dc
+        R = np.where(df_spec['Teff_SpT'] == takeClosest(Tsort, row['Teff']))[0][0]  # Row of df_spec with closest Teff
+        C = np.where(df_corr['Vmag_List'] == takeClosest(Cors, row['Vmag']))[0][0]  # Correction index of df_corr
         
         # Gather conversion factor
-        B_f = dj['B-V'].iloc[R]
-        R_f = dj['V-Rc'].iloc[R]
-        I_f = dj['V-Ic'].iloc[R]
-        K_f = dj['V-Ks'].iloc[R]
+        B_f = df_spec['B-V'].iloc[R]
+        R_f = df_spec['V-Rc'].iloc[R]
+        I_f = df_spec['V-Ic'].iloc[R]
+        K_f = df_spec['V-Ks'].iloc[R]
         
-        U_f = dj['U-B'].iloc[R]
-        K_f = dj['V-Ks'].iloc[R]
-        H_f = dj['H-K'].iloc[R]
-        J_f = dj['J-H'].iloc[R]
+        U_f = df_spec['U-B'].iloc[R]
+        K_f = df_spec['V-Ks'].iloc[R]
+        H_f = df_spec['H-K'].iloc[R]
+        J_f = df_spec['J-H'].iloc[R]
 
-        C_f = dc['Correction'].iloc[C]
+        C_f = df_corr['Correction'].iloc[C]
 
         # Calculate magnitudes
         Vmag_uncalc = row['Vmag']
@@ -161,21 +160,23 @@ def WorkBuilder(csvpath):
 
         return Bmag, Rmag, Imag, Kmag, Umag, Vmag, Hmag, Jmag
     
+
     # Applies functions to filtered data set and creates new columns.
     # For functions returning multiple variables, count over them as a Series to write to individual columns.
     magCols = ['Bmag','Rmag','Imag','Kmag_Calc', 'Umag','Vmag_Calc', 'Hmag', 'Jmag']
 
-    di['Depth_Calc'] = di.apply(lambda row: ARatio(row), axis=1)
-    di[magCols] = di.apply(lambda row: MagCalc(row),
-                           axis=1, result_type='expand')
-    di[['a_Calc','Teq_Calc']] = di.apply(lambda row: TPCalc(row),
-                                         axis=1, result_type='expand') 
-    di['ScaleHeight_Prox'] = di.apply(lambda row: HProx(row), axis=1)    
-    di['Previous Study Flag'] = di.apply(lambda row: RefFlag(row), axis=1)
+    df_tep['Depth_Calc'] = df_tep.apply(lambda row: AreaRatio(row), axis=1)
+    df_tep[magCols] = df_tep.apply(lambda row: MagCalc(row),
+                                   axis=1, result_type='expand')
+    df_tep[['a_Calc','Teq_Calc']] = df_tep.apply(lambda row: Teq_Calc(row),
+                                                 axis=1, result_type='expand') 
+    df_tep['ScaleHeight_Prox'] = df_tep.apply(lambda row: H_Proxy(row), axis=1)    
+    df_tep['Previous Study Flag'] = df_tep.apply(lambda row: RefNo_Flag(row), axis=1)
 
     # If entries have missing K-mags (eg. two OGLE objects), use the calculated ones instead!
-    Kmag_missing = di['Kmag'] == ''
-    di.loc[Kmag_missing, 'Kmag'] = di.loc[Kmag_missing, 'Kmag_Calc']
+    Kmag_missing = (df_tep['Kmag'] == '')
+    df_tep.loc[Kmag_missing, 'Kmag'] = df_tep.loc[Kmag_missing, 'Kmag_Calc']
+
 
     # Only recovered for systems with no b-value yet in literature.
     # Seager/ORM model (2003) is simple - if it breaks, assign b of 0.5.
@@ -210,17 +211,19 @@ def WorkBuilder(csvpath):
         KC = row['Kmag'] - row['Kmag_Calc']
         return VC, KC
     
+
     # More columns
-    di[['a-a_Calc % Error','Rp/R*','a_Calc/R*', 'Impact Parameter (ORM)']] = di.apply(lambda row: ImpactCalc(row),
-                                                                                      axis=1, result_type='expand')
-    di[['V-Vcalc', 'K-Kcalc']] = di.apply(lambda row: SpecCheck(row),
-                                          axis=1, result_type='expand')
+    df_tep[['a-a_Calc % Error','Rp/R*','a_Calc/R*', 'Impact Parameter (ORM)']] = df_tep.apply(lambda row: ImpactCalc(row),
+                                                                                              axis=1, result_type='expand')
+    df_tep[['V-Vcalc', 'K-Kcalc']] = df_tep.apply(lambda row: SpecCheck(row),
+                                                  axis=1, result_type='expand')
     
     # Merge impact parameter columns and tidy up.   
-    di['Impact Parameter (ORM)'] = di['Impact Parameter (ORM)'].fillna(value=0.5)
-    di['Impact Parameter'] = di['Impact Parameter'].fillna(di['Impact Parameter (ORM)'])
-    di = di.drop(['Impact Parameter (ORM)'], axis=1)
+    df_tep['Impact Parameter (ORM)'] = df_tep['Impact Parameter (ORM)'].fillna(value=0.5)
+    df_tep['Impact Parameter'] = df_tep['Impact Parameter'].fillna(df_tep['Impact Parameter (ORM)'])
+    df_tep = df_tep.drop(['Impact Parameter (ORM)'], axis=1)
     
+
     # Recover ugriz Sloan magnitudes for TNT, LT IO:O and others.
     # Equations used are from Table 3 of Jordi et al. (2006)
     def SloanCalc(row):
@@ -241,8 +244,8 @@ def WorkBuilder(csvpath):
                       
         return umag, gmag, rmag, imag, zmag
     
-    di[['umag','gmag','rmag','imag','zmag']] = di.apply(lambda row: SloanCalc(row),
-                                                        axis=1, result_type='expand')
+    df_tep[['umag','gmag','rmag','imag','zmag']] = df_tep.apply(lambda row: SloanCalc(row),
+                                                                axis=1, result_type='expand')
                 
     # RISE uses a 720nm longpass filter - I and Z have strong overlap, so can't just be averaged.
     # RISE does not take routine photometric standards, so take these numbers with a pinch of salt!
@@ -293,13 +296,14 @@ def WorkBuilder(csvpath):
         
         return m_GR01
     
-    di[['RISEmag', 'SPRAT_Redmag', 'SPRAT_Bluemag']] = di.apply(lambda row: RISECalc(row),
+    # Finalize working TEP set
+    df_tep[['RISEmag', 'SPRAT_Redmag', 'SPRAT_Bluemag']] = df_tep.apply(lambda row: RISECalc(row),
+                                                                        axis=1, result_type='expand')
+    df_tep[['600RI+19mag', 'HKmag', 'G750Mmag']] = df_tep.apply(lambda row: VLTGrismCalc(row),
                                                                 axis=1, result_type='expand')
-    di[['600RI+19mag', 'HKmag', 'G750Mmag']] = di.apply(lambda row: VLTGrismCalc(row),
-                                                        axis=1, result_type='expand')
-    di['GR01mag'] = di.apply(lambda row: NTTGrismCalc(row), axis=1)
+    df_tep['GR01mag'] = df_tep.apply(lambda row: NTTGrismCalc(row), axis=1)
     
     # Write dataframe to csvs.
-    di.to_csv(rf'{csvpath}/WorkingTEPSet.csv', index=False)
+    df_tep.to_csv(workingtep_csv_path, index=False)
 
     print('[WorkingTEPSetBuilder] New Working TEPSet constructed.')

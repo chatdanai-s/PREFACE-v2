@@ -11,41 +11,49 @@ def BWriter(row):
     return row['Planet']
 
 # Main function
-# csvpath argument MUST be csvcorepath from the master shell.
-def ExoOrgImpacts(csvpath):
-    # Takes in all names in FullTEPSet and processes them.
-    da = pd.read_csv(rf'{csvpath}/FullTEPSet.csv')
-    da.insert(1, 'Planet_temp', da['Planet'])   # Temporary column
+def ExoOrgImpacts(CSV_core_folder):
+    # Locate files
+    fulltepset_csv_path = CSV_core_folder / 'FullTEPSet.csv'
+    exoorglist_csv_path = CSV_core_folder / 'ExoOrgList.csv'
+    tep_with_exoorg_csv_path = CSV_core_folder / 'FullTEPSetWithExoOrgImpacts.csv'
 
-    da['Planet'] = da['Planet'].replace({'-00':'-', '-0':'-',
-                                         '_00':'_', '_0':'_'},
-                                        regex=True
-                                        )
-    da['Planet'] = da.apply(lambda row: BWriter(row), axis=1)
+
+    # Takes in all names in FullTEPSet and processes them.
+    df_fulltep = pd.read_csv(fulltepset_csv_path)
+    df_fulltep.insert(1, 'Planet_temp', df_fulltep['Planet'])   # Temporary column to be used in final planet name
+
+    # Setup planet column as key
+    df_fulltep['Planet'] = df_fulltep['Planet'].replace({'-00':'-', '-0':'-',
+                                                         '_00':'_', '_0':'_'},
+                                                         regex=True
+                                                         )
+    df_fulltep['Planet'] = df_fulltep.apply(lambda row: BWriter(row), axis=1)
+
 
     # Takes in table of transiting planets from exoplanets.org
     # exoplanets.org is a catalogue built by hand, so no auto-updater here.
     # Also, exoplanets.org is not updated with planets published after June 2018
     colnames = ['NAME', 'B']
-    db = pd.read_csv(rf'{csvpath}/ExoOrgList.csv', usecols=colnames)
-    db.rename(columns={'NAME': 'Planet', 'B': 'Impact Parameter'}, inplace=True)
+    df_exoorg = pd.read_csv(exoorglist_csv_path, usecols=colnames)
+    df_exoorg.rename(columns={'NAME': 'Planet', 'B': 'Impact Parameter'}, inplace=True)
 
     # Process planet names before merging
-    db['Planet'] = db['Planet'].replace({'55 Cnc e':'55_Cnc_e', 'OGLE2':'OGLE',
-                                         'BD +20 594': 'K2-56b', 
-                                         r'([A-Z]) ': r'\1_',
-                                         'A b':'b',
-                                         ' ':''
-                                         },
-                                        regex=True
-                                        )
+    df_exoorg['Planet'] = df_exoorg['Planet'].replace({'55 Cnc e':'55_Cnc_e', 'OGLE2':'OGLE',
+                                                       'BD +20 594': 'K2-56b', 
+                                                       r'([A-Z]) ': r'\1_',
+                                                       'A b':'b',
+                                                       ' ':''
+                                                       },
+                                                       regex=True
+                                                       )
     
+
     # Append impact parameter to original dataframe
-    dc = pd.merge(da, db, on='Planet', how='left')
-    dc = dc.drop('Planet', axis=1)                      # Recover old planet names
-    dc = dc.rename(columns={'Planet_temp': 'Planet'})  
+    df_combined = pd.merge(df_fulltep, df_exoorg, on='Planet', how='left')
+    df_combined = df_combined.drop('Planet', axis=1)                      # Recover old planet names
+    df_combined = df_combined.rename(columns={'Planet_temp': 'Planet'})  
 
     # Export
-    dc.to_csv(rf'{csvpath}/FullTEPSetWithExoOrgImpacts.csv', index=False)
+    df_combined.to_csv(tep_with_exoorg_csv_path, index=False)
 
     print('[ImpactMerger] Impact parameters from exoplanets.org recovered.')

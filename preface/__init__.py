@@ -47,10 +47,9 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
     P1_ModCheck.Check(CSV_core_folder)
     P1_ImpactMerger.ExoOrgImpacts(CSV_core_folder)
     P1_ExoplanetseuImpactMerger.ExoeuImpacts(CSV_core_folder)
+    P1_WorkingTEPSetBuilder.WorkBuilder(CSV_core_folder)
 
     # Above is finished, below is unfinished.
-
-    P1_WorkingTEPSetBuilder.WorkBuilder(CSV_core_folder)
 
     # P1_RankMaker.RankMaker(CSV_core_folder, CSV_intermediate_folder,
     #                        scope_df, scope_idx, *TelescopeConfigurations.unpack)

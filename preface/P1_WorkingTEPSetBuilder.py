@@ -163,7 +163,7 @@ def WorkBuilder(CSV_core_folder):
 
     # Applies functions to filtered data set and creates new columns.
     # For functions returning multiple variables, count over them as a Series to write to individual columns.
-    magCols = ['Bmag','Rmag','Imag','Kmag_Calc', 'Umag','Vmag_Calc', 'Hmag', 'Jmag']
+    magCols = ['Bmag','Rmag','Imag','Kmag_Calc','Umag','Vmag_Calc','Hmag','Jmag']
 
     df_tep['Depth_Calc'] = df_tep.apply(lambda row: AreaRatio(row), axis=1)
     df_tep[magCols] = df_tep.apply(lambda row: MagCalc(row),
@@ -207,9 +207,9 @@ def WorkBuilder(CSV_core_folder):
     
     # Check for validity of spectral conversions.        
     def SpecCheck(row):
-        VC = row['Vmag'] - row['Vmag_Calc']
-        KC = row['Kmag'] - row['Kmag_Calc']
-        return VC, KC
+        delta_Vmag = row['Vmag'] - row['Vmag_Calc']
+        delta_Kmag = row['Kmag'] - row['Kmag_Calc']
+        return delta_Vmag, delta_Kmag
     
 
     # More columns

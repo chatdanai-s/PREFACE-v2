@@ -9,7 +9,7 @@ import numpy as np
 import astropy.units as u
 import datetime as dt
 
-from ModCheck import creation_date
+from P1_ModCheck import creation_date
 
 # Calculation of sky background. Spectrographs use a square aperture instead (as part of the slit, 10" width).
 # Defocusing means we take in more of the sky background!

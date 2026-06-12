@@ -48,6 +48,7 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
     fulltepset_csv_path = CSV_core_folder / 'FullTEPSet.csv'
     workingtep_csv_path = CSV_core_folder / 'WorkingTEPSet.csv'
     rankedtep_csv_path = CSV_intermediate_folder / 'ranked_tep_sets' / f'RankedTEPSet_{instrument}_{filter_name}-band_for_{run_mode}_{sky_noise_text}_{defocus_text}.csv'
+    (CSV_intermediate_folder / 'ranked_tep_sets').mkdir(parents=True, exist_ok=True)
 
     df_tep = pd.read_csv(workingtep_csv_path, skipinitialspace=True)
 
@@ -223,7 +224,23 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
     def MultiTransitHabitable_Priority(row):
         MultiTransitHabitable_Rank = row['Habitable_Rank'] / np.sqrt(row['P (day)'])
         return MultiTransitHabitable_Rank
-            
+
+    # Transmission Spectroscopy Metric (TSM) as defined by Kempton+18
+    def TSM(row):
+        # Initialize variables
+        Rp = row['Rp']
+        Rs = row['R*']
+        Mp = row['Mp']  # Mp_Calc will be implemented in WorkingTEPSetBuilder soon but not now
+        Teq = row['Teq'] if pd.notna(row['Teq']) else row['Teq_Calc']
+        mJ = row['Jmag']
+        ScaleFactor = 1
+
+        # Convert to appropriate units
+        Rp = (Rp * u.jupiterRad).to(u.earthRad).value
+        Mp = (Mp * u.jupiterMass).to(u.earthMass).value
+
+        TSM = ScaleFactor * (Rp**3 * Teq) / (Mp * Rs**2) * 10**(-0.2 * mJ)
+        return TSM
 
     ########################################################################################################
     ## END OF DEFINITIONS ##
@@ -259,11 +276,12 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
             sys.exit("[RankMaker] Please select either 'Half_Well' for photometry, 'Spectral_Half_Well' for optical spectroscopy or 'IR_Half_Well' for NIR spectroscopy.")
 
         # Apply our functions.
-        df_tep['Rank'] = df_tep.apply(lambda row: Priority(row, habitable_study=False), axis=1)    
-        df_tep['Habitable_Rank'] = df_tep.apply(lambda row: Priority(row, habitable_study=True), axis=1)    
-        df_tep['Multi_Transit_Rank'] = df_tep.apply(lambda row: MultiTransit_Priority(row), axis=1)    
-        df_tep['Multi_Transit_Habitable_Rank'] = df_tep.apply(lambda row: MultiTransitHabitable_Priority(row), axis=1)    
-        
+        df_tep['Rank'] = df_tep.apply(lambda row: Priority(row, habitable_study=False), axis=1)
+        df_tep['Habitable_Rank'] = df_tep.apply(lambda row: Priority(row, habitable_study=True), axis=1)
+        df_tep['Multi_Transit_Rank'] = df_tep.apply(lambda row: MultiTransit_Priority(row), axis=1)
+        df_tep['Multi_Transit_Habitable_Rank'] = df_tep.apply(lambda row: MultiTransitHabitable_Priority(row), axis=1)
+        df_tep['TSM'] = df_tep.apply(lambda row: TSM(row), axis=1)
+
         # Sort by chosen column (signal strength parameter), high to low.
         df_tep = df_tep.sort_values(by='Rank', ascending=False)
         

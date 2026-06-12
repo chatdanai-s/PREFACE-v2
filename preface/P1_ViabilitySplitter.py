@@ -49,7 +49,10 @@ def Splitter(CSV_core_folder, CSV_intermediate_folder, output_folder,
 
     phase_2_input_folder = (CSV_intermediate_folder / 'phase_2_inputs')
     phase_2_output_individual_folder = (output_folder / 'phase_2' / 'individual_planets')
-    phase_2_output_individual_folder.mkdir(parents=True, exist_ok=True)  # Create directory if doesnt exist
+
+    # Create directory if doesnt exist
+    phase_2_input_folder.mkdir(parents=True, exist_ok=True)
+    phase_2_output_individual_folder.mkdir(parents=True, exist_ok=True)
 
     def clear_configparts(configpath):
         configfiles = [os.path.join(path, f)

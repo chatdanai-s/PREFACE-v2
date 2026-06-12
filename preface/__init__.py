@@ -31,7 +31,7 @@ def wipe_intermediate_csvs():
     for path in CSV_intermediate_folder.rglob("*"):
         if path.is_file() or path.is_symlink():
             path.unlink()
-    print('All intermediate CSV files in pipeline wiped from system.')
+    print('All intermediate CSV files in PREFACE successfully wiped from system.')
 
 
 def get_available_filters_list(instrument: str):
@@ -61,7 +61,7 @@ def get_available_filters_list(instrument: str):
 
 def open_scope_csv():
     csv_path = CSV_core_folder / "Scope.csv"
-
+    
     if sys.platform.startswith("win"):
         os.startfile(csv_path)
     elif sys.platform == "darwin":  # macOS

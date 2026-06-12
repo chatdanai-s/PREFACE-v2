@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "preface-spearnet"
+version = "2.0.0"
+description = "An Automated Pipeline for the Selection of Transmission Spectroscopy Candidates"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["placeholder"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent"
+]
+authors = [
+  { name = "placeholder", email = "placeholder" }
+]
+
+dependencies = [
+]
+# numpy, pandas, matplotlib, astropy, scipy, python-dateutil, joblib, tqdm, ephem, timezonefinder
+
+[project.urls]
+Homepage = "https://github.com/chatdanai-s/PREFACE"
+BugTracker = "https://github.com/chatdanai-s/PREFACE/issues"
+# Documentation = "TBA"
+
+[tool.setuptools] # setuptools-specific settings not covered by PEP 621
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["preface*"]
+exclude = ["__pycache__", "tests"]

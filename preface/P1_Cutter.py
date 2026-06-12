@@ -41,6 +41,7 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
         CSV_intermediate_folder / "minranks_cut_sets"
         / f"minRanks_{Inst_cal}_{Filter_cal}-band_for_{run_mode}_{sky_noise_text}_{defocus_text}_{viable_cumulative_cut*100}%_cut.csv"
     )
+    (CSV_intermediate_folder / "minranks_cut_sets").mkdir(parents=True, exist_ok=True)
 
     # Run RankMaker on Calibrating instrument if configuration is different
     different_calibrating_configuration = (Inst_cal != instrument) or (Filter_cal != filter_name) \

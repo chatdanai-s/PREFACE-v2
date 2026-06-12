@@ -3,14 +3,13 @@ import datetime as dt
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 from preface import run_preface
 from preface.configs import TelescopeConfigurations, OutputConfigurations, MoonlightNoiseConfigurations, MultiprocessingConfigurations
 
 
 ObsStart = dt.datetime(2025,10,1,0,0,0)
 ObsEnd = dt.datetime(2026,5,31,0,0,0)
-ThisFolder = Path(__file__).resolve().parent
+outputFolder = rf'C:\Users\WBS\Documents\PREFACE_test_output'  # Change as needed in local device
 
 TelescopeConfigs = TelescopeConfigurations(
     instrument='TNT ULTRASPEC',
@@ -22,7 +21,7 @@ TelescopeConfigs = TelescopeConfigurations(
 OutputConfigs = OutputConfigurations(
     observation_start=ObsStart,
     observation_end=ObsEnd,
-    output_folder=ThisFolder,
+    output_folder=outputFolder,
     metric_mode='Rank',
     viable_cumulative_cut=0.97,
     toggle_graph_outputs=True,
@@ -44,3 +43,4 @@ run_preface(TelescopeConfigurations=TelescopeConfigs,
             OutputConfigurations=OutputConfigs,
             MoonlightnoiseConfigurations=MoonlightConfigs,
             MultiprocessingConfigurations=MultiprocessingConfigs)
+

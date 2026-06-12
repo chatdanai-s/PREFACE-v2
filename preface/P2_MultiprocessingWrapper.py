@@ -72,6 +72,7 @@ def interpolate_altaz(Obstimes, altazs, new_times):
     az_interp = az_fn(new_times.jd)
     return alt_interp, az_interp
 
+
 # Phase Two needs a cached IERS table to perform co-ordinate transformations, which auto-updates every 7 days.
 # A manual download on a shorter timescale is needed to prevent multiple checks/downloads when multiprocessing.
 # The hash used to denote the file also updates every 7 days, so this must also be tracked and updated in a .txt file.

@@ -11,6 +11,8 @@ from . import P1_ViabilitySplitter
 
 import pandas as pd
 import numpy as np
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -19,25 +21,56 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 CSV_core_folder = PACKAGE_ROOT / "csvbank" / "core"
 CSV_intermediate_folder = PACKAGE_ROOT / "csvbank" / "intermediate"
 
-# Scope dataframe load
+# Scope dataframe load and useful variables
 scope_df = pd.read_csv(CSV_core_folder / 'Scope.csv')
 telescope_list = scope_df['Telescope'].tolist()
+csvbank_location = PACKAGE_ROOT / "csvbank"
 
-# Useful CSV Bank functions
-def locate_csvbanks():
-    print(PACKAGE_ROOT)
-
-def clear_intermediate_csvs():
+# Useful utility functions
+def wipe_intermediate_csvs():
     for path in CSV_intermediate_folder.rglob("*"):
         if path.is_file() or path.is_symlink():
             path.unlink()
-    print('All intermediate CSV files in pipeline removed from system.')
-
-# TBA functions (More pressing things are due first)
-# def list_available_filters(instrument): 
-#     pass
+    print('All intermediate CSV files in pipeline wiped from system.')
 
 
+def get_available_filters_list(instrument: str):
+    # Find the row corresponding to the instrument
+    row = scope_df.loc[scope_df["Telescope"] == instrument]
+    if row.empty:
+        raise ValueError(f"Instrument '{instrument}' not found.")
+
+    row = row.iloc[0]
+
+    # Find filters that have both mzp_ and msky_ columns defined as numbers
+    mzp_filters = {
+        col[len("mzp_"):]
+        for col in scope_df.columns
+        if col.startswith("mzp_") and pd.notna(row[col])
+    }
+    msky_filters = {
+        col[len("msky_"):]
+        for col in scope_df.columns
+        if col.startswith("msky_") and pd.notna(row[col])
+    }
+    
+    # Return filters that exist in both
+    available_filters = sorted(list(mzp_filters & msky_filters))
+    return available_filters
+
+
+def open_scope_csv():
+    csv_path = CSV_core_folder / "Scope.csv"
+
+    if sys.platform.startswith("win"):
+        os.startfile(csv_path)
+    elif sys.platform == "darwin":  # macOS
+        subprocess.run(["open", str(csv_path)], check=True)
+    else:  # Linux
+        subprocess.run(["xdg-open", str(csv_path)], check=True)
+
+
+# Main preface function
 def run_preface(TelescopeConfigurations: TelescopeConfigurations,
                 OutputConfigurations: OutputConfigurations,
                 MoonlightnoiseConfigurations: MoonlightNoiseConfigurations,
@@ -78,7 +111,6 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
 
 
     # # Run pipeline (Phase 2)
-    # print('\nRunning Phase 2 of preface...\n')
 
     # P2_MultiprocessingWrapper.P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     #                                  scope_df, scope_idx, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,

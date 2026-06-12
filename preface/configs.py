@@ -48,7 +48,8 @@ class TelescopeConfigurations:
             msky = scope_df[f'msky_{filter_name}'].iloc[scope_idx]
             if not (isNumber(mzp) and isNumber(msky)):
                 InputErrorFlag = True
-                print(f"[InputCheck] filter_name {filter_name} is not available for this telescope!")
+                print(f"[InputCheck] filter_name {filter_name} is not available for this telescope! "
+                       "See preface.get_available_filters_list(instrument) for list of available filters for telescope")
         
         except IndexError:
             InputErrorFlag = True
@@ -57,7 +58,8 @@ class TelescopeConfigurations:
             
         except KeyError:
             InputErrorFlag = True
-            print(f"[InputCheck] {filter_name} is not a valid filter_name!")
+            print(f"[InputCheck] {filter_name} is not a valid filter_name! "
+                  "See preface.get_available_filters_list(instrument) for list of available filters for telescope")
 
 
         # Check run_mode
@@ -127,7 +129,7 @@ class OutputConfigurations:
         self,
         observation_start: datetime,
         observation_end: datetime,
-        output_folder: str,
+        output_folder: str | Path,
         metric_mode="Rank",
         viable_cumulative_cut=0.97,
         toggle_graph_outputs=True,
@@ -194,7 +196,7 @@ class OutputConfigurations:
         # Store valid output keys
         self.observation_start = observation_start
         self.observation_end = observation_end
-        self.output_folder = output_folder
+        self.output_folder = Path(output_folder)
         self.metric_mode = metric_mode
         self.viable_cumulative_cut = viable_cumulative_cut
         self.toggle_graph_outputs = toggle_graph_outputs

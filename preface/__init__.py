@@ -70,7 +70,7 @@ def open_scope_csv():
         subprocess.run(["xdg-open", str(csv_path)], check=True)
 
 
-# Main preface function
+##### Main preface function #####
 def run_preface(TelescopeConfigurations: TelescopeConfigurations,
                 OutputConfigurations: OutputConfigurations,
                 MoonlightnoiseConfigurations: MoonlightNoiseConfigurations,

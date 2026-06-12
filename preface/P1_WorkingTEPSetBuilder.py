@@ -48,6 +48,36 @@ def Teq_Calc(row):
 
     return a, Teq
 
+# Exoplanet mass calculation using Edmondson+23 continuous M–R–T relation
+def Mp_Calc(row):
+    # Regime definitions:
+    # 1) Rocky regime: Mp_Calc < 4.95 M_Earth
+    # 2) Non-degenerate Neptunian regime:
+    #    Mp_Calc >= 4.95 M_Earth AND Rp is below the expected Jovian-radius threshold
+    #    at Teq = 500 K (Approximately 9.68M_E or 0.865 R_J).
+    #    Beyond this boundary, the M–R–T relation becomes degenerate (see Fig. 2).
+    # 3) (Degenerate) Jovian regime: Mp_Calc will be clipped at boundary Rp
+
+    Rp_Jup = row['Rp']
+    Rp_Ear = (Rp_Jup * u.R_jup).to(u.R_earth).value
+
+    rocky_Rp_boundary = 1.01 * 4.95**0.28
+    degenerate_Rp_boundary = 1.10 * 500**0.35
+
+    if Rp_Ear < rocky_Rp_boundary:
+        k, beta = 1.01, 0.28
+        Mp_Calc_Ear = (Rp_Ear / k)**(1/beta)
+    elif Rp_Ear < degenerate_Rp_boundary:
+        k, beta = 0.53, 0.68
+        Mp_Calc_Ear = (Rp_Ear / k)**(1/beta)
+    elif Rp_Ear >= degenerate_Rp_boundary:
+        k, beta = 0.53, 0.68
+        Mp_Calc_Ear = (degenerate_Rp_boundary / k)**(1/beta)
+    
+    Mp_Calc_Jup = (Mp_Calc_Ear * u.M_earth).to(u.M_jup).value
+    return Mp_Calc_Jup
+
+
 # Returns a flag based on the three supplied references for each object.
 # If all different, well-studied. If all identical, not followed up at all!
 def RefNo_Flag(row):
@@ -149,7 +179,7 @@ def WorkBuilder(CSV_core_folder):
 
         # If entries have missing K-mags (eg. two OGLE objects), use the calculated ones instead!
         Kmag_uncalc = row['Kmag']
-        if row['Kmag'] == '':
+        if pd.isna(row['Kmag']) or row['Kmag'] == '':
             Kmag_uncalc = Kmag
 
         # Calculate more magnitudes
@@ -169,12 +199,13 @@ def WorkBuilder(CSV_core_folder):
     df_tep[magCols] = df_tep.apply(lambda row: MagCalc(row),
                                    axis=1, result_type='expand')
     df_tep[['a_Calc','Teq_Calc']] = df_tep.apply(lambda row: Teq_Calc(row),
-                                                 axis=1, result_type='expand') 
-    df_tep['ScaleHeight_Prox'] = df_tep.apply(lambda row: H_Proxy(row), axis=1)    
+                                                 axis=1, result_type='expand')
+    df_tep['Mp_Calc'] = df_tep.apply(lambda row: Mp_Calc(row), axis=1)
+    df_tep['ScaleHeight_Prox'] = df_tep.apply(lambda row: H_Proxy(row), axis=1)
     df_tep['Previous Study Flag'] = df_tep.apply(lambda row: RefNo_Flag(row), axis=1)
 
     # If entries have missing K-mags (eg. two OGLE objects), use the calculated ones instead!
-    Kmag_missing = (df_tep['Kmag'] == '')
+    Kmag_missing = (df_tep['Kmag'].isna()) | (df_tep['Kmag'] == '')
     df_tep.loc[Kmag_missing, 'Kmag'] = df_tep.loc[Kmag_missing, 'Kmag_Calc']
 
 

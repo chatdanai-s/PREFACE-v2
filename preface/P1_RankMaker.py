@@ -135,6 +135,7 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
     def Priority(row, habitable_study=False):
         # Mass-radius variables
         Mp = row['Mp']
+        Mp_Calc = row['Mp_Calc']
         Rp = row['Rp']
         Merr = max(row['Mp_err_up'], row['Mp_err_dn']) / row['Mp']
 
@@ -183,8 +184,7 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
             elif ~np.isnan(Mp) and (Merr <= 0.4):
                 Rank = Signal * (Rp/Mp) / Noise_Exp
             elif np.isnan(Mp) or np.isnan(Merr) or (Merr > 0.4):
-                Rank = Signal * max(Rp/0.8, 0.8/Rp) / Noise_Exp
-            
+                Rank = Signal * (Rp/Mp_Calc) / Noise_Exp
             else:
                 sys.exit(f'[RankMaker] Planet fallen through generators at {row.Planet} - flag me!')
 
@@ -199,12 +199,7 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
             elif ~np.isnan(Mp) and (Merr <= 0.4):
                 Rank = C_T * Flux * T14_sec * Teq_Calc * (Depth/100) * Rp / Mp
             elif np.isnan(Mp) or np.isnan(Merr) or (Merr > 0.4):
-                if Rp >= 0.8:
-                    n = 0
-                elif Rp < 0.8:
-                    n = 2
-
-                Rank = C_T * Flux * T14_sec * Teq_Calc * (Depth/100) * Rp**(1-n) / 0.8
+                Rank = C_T * Flux * T14_sec * Teq_Calc * (Depth/100) * Rp / Mp_Calc
 
             else:
                 sys.exit(f'[RankMaker] Planet fallen through generators at {row.Planet} - flag me!')
@@ -230,7 +225,7 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
         # Initialize variables
         Rp = row['Rp']
         Rs = row['R*']
-        Mp = row['Mp']  # Mp_Calc will be implemented in WorkingTEPSetBuilder soon but not now
+        Mp = row['Mp'] if pd.notna(row['Mp']) else row['Mp_Calc']
         Teq = row['Teq'] if pd.notna(row['Teq']) else row['Teq_Calc']
         mJ = row['Jmag']
         ScaleFactor = 1
@@ -276,12 +271,12 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
             sys.exit("[RankMaker] Please select either 'Half_Well' for photometry, 'Spectral_Half_Well' for optical spectroscopy or 'IR_Half_Well' for NIR spectroscopy.")
 
         # Apply our functions.
+        df_tep['TSM'] = df_tep.apply(lambda row: TSM(row), axis=1)
         df_tep['Rank'] = df_tep.apply(lambda row: Priority(row, habitable_study=False), axis=1)
         df_tep['Habitable_Rank'] = df_tep.apply(lambda row: Priority(row, habitable_study=True), axis=1)
         df_tep['Multi_Transit_Rank'] = df_tep.apply(lambda row: MultiTransit_Priority(row), axis=1)
         df_tep['Multi_Transit_Habitable_Rank'] = df_tep.apply(lambda row: MultiTransitHabitable_Priority(row), axis=1)
-        df_tep['TSM'] = df_tep.apply(lambda row: TSM(row), axis=1)
-
+        
         # Sort by chosen column (signal strength parameter), high to low.
         df_tep = df_tep.sort_values(by='Rank', ascending=False)
         

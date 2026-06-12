@@ -2,7 +2,7 @@
 # Further b-values can be retrieved from exoplanets.eu, particularly for new objects.
 
 import pandas as pd
-from P1_ImpactMerger import BWriter
+from preface.P1_ImpactMerger import BWriter
 
 # Main function
 

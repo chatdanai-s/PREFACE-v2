@@ -17,8 +17,8 @@ from joblib import Parallel, delayed, parallel_config
 from tqdm import tqdm  # For multiprocessing progress
 
 # Other pipeline imports
-import P2MP_Process
-from ModCheck import creation_date
+from . import P2_MultiprocessingProcess
+from .P1_ModCheck import creation_date
 
 # Timezone handling
 import astropy.units as u

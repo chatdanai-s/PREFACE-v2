@@ -4,11 +4,15 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 import joblib
+from pathlib import Path
 
-from preface import scope_df
+# Scope df (Cannot import from __init__.py due to circular import)
+PACKAGE_ROOT = Path(__file__).resolve().parent
+CSV_core_folder = PACKAGE_ROOT / "csvbank" / "core"
+scope_df = pd.read_csv(CSV_core_folder / 'Scope.csv')
 
 # Minimum and maximum allowed observation years according to LUT
-min_obs_year, max_obs_year = 2026, 2050
+min_obs_year, max_obs_year = 2025, 2050
 
 # Checks if variable is a number or boolean
 def isNumber(var):
@@ -150,7 +154,7 @@ class OutputConfigurations:
 
 
         # Check if output folder exists
-        if (not isinstance(output_folder, str)) or (not os.path.isdir(output_folder)):
+        if (not isinstance(output_folder, (str, Path))) or (not os.path.isdir(output_folder)):
             InputErrorFlag = True
             print(f"[InputCheck] {output_folder} is not a valid output_folder! "
                   "Does the directory exist?")
@@ -177,7 +181,6 @@ class OutputConfigurations:
 
         
         # Check event_weight_graph_threshold
-        InputErrorFlag = False
         if (not isNumber(event_weight_graph_threshold)) or (not (0 <= event_weight_graph_threshold <= 1)):
             InputErrorFlag = True
             print(f"[InputCheck] {event_weight_graph_threshold} is not a valid event_weight_graph_threshold! "

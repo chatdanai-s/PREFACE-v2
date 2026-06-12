@@ -1,7 +1,13 @@
 from .configs import TelescopeConfigurations, OutputConfigurations, MoonlightNoiseConfigurations, MultiprocessingConfigurations
-import P1_ModCheck, P1_ImpactMerger, P1_ExoplanetseuImpactMerger
-import P1_WorkingTEPSetBuilder, P1_RankMaker, P1_Cutter, P1_ViabilitySplitter
-import P2_MultiprocessingWrapper, P2_PostCleaner
+from . import P1_ModCheck
+from . import P1_ImpactMerger
+from . import P1_ExoplanetseuImpactMerger
+from . import P1_WorkingTEPSetBuilder
+from . import P1_RankMaker
+from . import P1_Cutter
+# from . import P1_ViabilitySplitter
+# from . import P2_MultiprocessingWrapper
+# from . import P2_PostCleaner
 
 import pandas as pd
 import numpy as np
@@ -17,8 +23,18 @@ CSV_intermediate_folder = PACKAGE_ROOT / "csvbank" / "intermediate"
 scope_df = pd.read_csv(CSV_core_folder / 'Scope.csv')
 telescope_list = scope_df['Telescope'].tolist()
 
+# Useful CSV Bank functions
+def locate_csvbanks():
+    print(PACKAGE_ROOT)
 
-# def list_available_filters(instrument): # TBA (More pressing things are due first)
+def clear_intermediate_csvs():
+    for path in CSV_intermediate_folder.rglob("*"):
+        if path.is_file() or path.is_symlink():
+            path.unlink()
+    print('All intermediate CSV files in pipeline removed from system.')
+
+# TBA functions (More pressing things are due first)
+# def list_available_filters(instrument): 
 #     pass
 
 
@@ -44,24 +60,28 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
 
 
     # Run pipeline (Phase 1)
+    print('\nRunning Phase 1 of PREFACE...\n')
+
     P1_ModCheck.Check(CSV_core_folder)
     P1_ImpactMerger.ExoOrgImpacts(CSV_core_folder)
     P1_ExoplanetseuImpactMerger.ExoeuImpacts(CSV_core_folder)
     P1_WorkingTEPSetBuilder.WorkBuilder(CSV_core_folder)
 
+    P1_RankMaker.RankMaker(CSV_core_folder, CSV_intermediate_folder,
+                           scope_df, scope_idx, *TelescopeConfigurations.unpack)
+
+    Rmin = P1_Cutter.RankMaker(CSV_core_folder, CSV_intermediate_folder,
+                               scope_df, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut)
+    
     # Above is finished, below is unfinished.
 
-    # P1_RankMaker.RankMaker(CSV_core_folder, CSV_intermediate_folder,
-    #                        scope_df, scope_idx, *TelescopeConfigurations.unpack)
-    
-    # min_rank = P1_Cutter.RankMaker(CSV_core_folder, CSV_intermediate_folder, output_folder,
-    #                            scope_df, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut)
-    
     # P1_ViabilitySplitter.Splitter(CSV_core_folder, CSV_intermediate_folder, 
-    #                               *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut, min_rank)
+    #                               *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut, RMin)
 
 
     # # Run pipeline (Phase 2)
+    # print('\nRunning Phase 2 of preface...\n')
+
     # P2_MultiprocessingWrapper.P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     #                                  scope_df, scope_idx, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,
     #                                  *MoonlightnoiseConfigurations.unpack,

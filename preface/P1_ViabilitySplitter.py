@@ -5,28 +5,39 @@ import os
 import fnmatch
 import pandas as pd
 
-csvtoppath = '../CSV_Bank/Top_Sets'
-csvlowpath = '../CSV_Bank/Unusable_Sets'
-
-
 # Main function
-def Splitter(csvrankpath, csvinpath, csvoutpath,
-             Inst, Filter, Run_Mode, Add_Noise, Defocus, Metric_Mode, ViableCut, RMin):
-    df = pd.read_csv(rf'{csvrankpath}/RankedTEPSet_{Inst}_{Filter}-band_for_{Run_Mode}_{Add_Noise}_{Defocus}.csv')
-    df = df.sort_values(by=Metric_Mode, ascending=False)
-    df['CumSum'] = df[Metric_Mode].cumsum()
-    df['SumFrac'] = df['CumSum'] / df['CumSum'].max()
+def Splitter(CSV_core_folder, CSV_intermediate_folder, output_folder,
+             instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut, RMin):
+    
+    sky_noise_text = 'Y-SkyNoise' if toggle_sky_noise else 'N-SkyNoise'
+    defocus_text = 'Y-Defocus' if toggle_defocus else 'N-Defocus'
+    config_str = f'{instrument}_{filter_name}-band_for_{run_mode}_{sky_noise_text}_{defocus_text}'
+    rankedtep_csv_path = CSV_intermediate_folder / 'ranked_tep_sets' / f'RankedTEPSet_{config_str}.csv'
 
-    df_top = df[df[Metric_Mode] >= RMin]    # Takes all planets ranked above the cumulative cut.
-    df_low = df[df[Metric_Mode] < RMin]     # Takes all planets ranked below the cumulative cut.
+    # Create output folders
+    viable_folder = (output_folder / "phase_1" / "viable_target_list")
+    nonviable_folder = (output_folder / "phase_1" / "nonviable_target_list")
 
+    viable_folder.mkdir(parents=True, exist_ok=True)
+    nonviable_folder.mkdir(parents=True, exist_ok=True)
+
+    # Import ranked TEP file and split into viable and nonviable files
+    df_ranked = pd.read_csv(rankedtep_csv_path)
+    df_ranked = df_ranked.sort_values(by=metric_mode, ascending=False)
+    df_ranked['CumSum'] = df_ranked[metric_mode].cumsum()
+    df_ranked['SumFrac'] = df_ranked['CumSum'] / df['CumSum'].max()
+
+    df_top = df_ranked[df_ranked[metric_mode] >= RMin]    # Takes all planets ranked above the cumulative cut.
+    df_low = df_ranked[df_ranked[metric_mode] < RMin]     # Takes all planets ranked below the cumulative cut.
+
+    # Export phase 1 output
     print("[ViabilitySplitter] Outputting rank threshold-separated TEPSets to .csv now..." )
-    df_top.to_csv(rf'{csvtoppath}/TopTEPSet_{Inst}_{Filter}-band_for_{Run_Mode},{Add_Noise},{Defocus},{Metric_Mode}_Mode,{ViableCut}_Cut.csv',
+    df_top.to_csv(viable_folder / f'/TopTEPSet_{config_str}_{metric_mode}-Mode_{viable_cumulative_cut}_Cut.csv',
                   index=False)
-    df_low.to_csv(rf'{csvlowpath}/UnusableTargets_{Inst}_{Filter}-band_for_{Run_Mode},{Add_Noise},{Defocus},{Metric_Mode}_Mode,{ViableCut}_Cut.csv',
+    df_low.to_csv(nonviable_folder / f'UnusableTargets_{config_str}_{metric_mode}-Mode_{viable_cumulative_cut}_Cut.csv',
                   index=False)
     
-    print(rf'[ViabilitySplitter] New viability division ({ViableCut} fraction cut) for {Metric_Mode}-mode successful.')
+    print(rf'[ViabilitySplitter] New viability division ({viable_cumulative_cut} fraction cut) for {metric_mode}-mode successful.')
         
     # Split top set into CSVs for individual targets, to be used by Phase Two.
     
@@ -53,4 +64,4 @@ def Splitter(csvrankpath, csvinpath, csvoutpath,
         df.iloc[[row]].to_csv(rf'{csvinpath}/{Inst}_{Filter}-band_for_{Run_Mode},{Add_Noise},{Defocus},{Metric_Mode}_{ViableCut}_Cut_{row}.csv',
                               index=False)
         
-    print('Phase One Complete.\n')
+    print('Phase One of PREFACE Complete.\n')

@@ -5,7 +5,7 @@ from . import P1_ExoplanetseuImpactMerger
 from . import P1_WorkingTEPSetBuilder
 from . import P1_RankMaker
 from . import P1_Cutter
-# from . import P1_ViabilitySplitter
+from . import P1_ViabilitySplitter
 # from . import P2_MultiprocessingWrapper
 # from . import P2_PostCleaner
 
@@ -70,13 +70,11 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
     P1_RankMaker.RankMaker(CSV_core_folder, CSV_intermediate_folder,
                            scope_df, scope_idx, *TelescopeConfigurations.unpack)
 
-    Rmin = P1_Cutter.RankMaker(CSV_core_folder, CSV_intermediate_folder,
+    RMin = P1_Cutter.RankMaker(CSV_core_folder, CSV_intermediate_folder,
                                scope_df, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut)
     
-    # Above is finished, below is unfinished.
-
-    # P1_ViabilitySplitter.Splitter(CSV_core_folder, CSV_intermediate_folder, 
-    #                               *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut, RMin)
+    P1_ViabilitySplitter.Splitter(CSV_core_folder, CSV_intermediate_folder, output_folder,
+                                  *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut, RMin)
 
 
     # # Run pipeline (Phase 2)

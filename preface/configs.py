@@ -220,9 +220,9 @@ class MoonlightNoiseConfigurations:
     def __init__(
         self,
         toggle_moonlight_noise=False,
-        scattering_aod="Default",
-        absorption_aod="Default",
-        asymmetry_factor="Default",
+        scattering_aod=0.2,
+        absorption_aod=0.3,
+        asymmetry_factor=0.6,
         moonlight_amplification_factor=5,
     ):
         
@@ -236,22 +236,22 @@ class MoonlightNoiseConfigurations:
         # If False, then do not bother
         if toggle_moonlight_noise == True:
             # Check scattering_aod
-            if (scattering_aod != 'Default') and (not isNumber(scattering_aod) or scattering_aod < 0):
+            if (not isNumber(scattering_aod) or scattering_aod < 0):
                 InputErrorFlag = True
                 print(f"[InputCheck] '{scattering_aod}' is not a valid scattering_aod! "
-                      "Is it 'Default' or a number >= 0?")
+                      "Is it a number >= 0?")
 
             # Check absorption_aod
-            if (absorption_aod != 'Default') and (not isNumber(absorption_aod) or absorption_aod < 0):
+            if (not isNumber(absorption_aod) or absorption_aod < 0):
                 InputErrorFlag = True
                 print(f"[InputCheck] '{absorption_aod}' is not a valid scattering_aod! "
-                      "Is it 'Default' or a number >= 0?")
+                      "Is it a number >= 0?")
 
             # Check asymmetry_factor
-            if (asymmetry_factor != 'Default') and (not isNumber(asymmetry_factor) or not (-1 < asymmetry_factor < 1)):
+            if (not isNumber(asymmetry_factor) or not (-1 < asymmetry_factor < 1)):
                 InputErrorFlag = True
                 print(f"[InputCheck] '{asymmetry_factor}' is not a valid asymmetry_factor! "
-                      "Is it 'Default' or a number between -1 and +1? (0.5-0.8 recommended)?")
+                      "Is it a number between -1 and +1? (0.5-0.8 recommended)?")
 
             # Check moonlight_amplification_factor
             if not isNumber(moonlight_amplification_factor):

@@ -28,7 +28,7 @@ OutputConfigs = OutputConfigurations(
     event_weight_graph_threshold=0.5
 )
 MoonlightConfigs = MoonlightNoiseConfigurations(
-    toggle_moonlight_noise=False,
+    toggle_moonlight_noise=True,
     scattering_aod="Default",
     absorption_aod="Default",
     asymmetry_factor="Default",

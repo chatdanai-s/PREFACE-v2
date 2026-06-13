@@ -74,4 +74,4 @@ def Splitter(CSV_core_folder, CSV_intermediate_folder, output_folder,
     for row in range(rows):
         df_top.iloc[[row]].to_csv(phase_2_input_folder / f'{individual_csv_initial_filename}_{row}.csv', index=False)
 
-    print('Phase One of PREFACE Complete.\n')
+    print('Phase One of PREFACE Complete.')

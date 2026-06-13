@@ -11,6 +11,7 @@ import urllib.error
 import numpy as np
 import datetime as dt
 import pandas as pd
+import ephem
 
 # Multiprocessing
 from joblib import Parallel, delayed, parallel_config
@@ -29,7 +30,6 @@ from timezonefinder import TimezoneFinder
 # SkyCoord lookup table handling
 from astropy.time import Time, TimeDelta
 from astropy.coordinates import AltAz, get_sun, get_body, SkyCoord
-from astropy.table import QTable
 from scipy.interpolate import interp1d
 
 # Get parameters associated with UBVRI/ugriz filters
@@ -155,10 +155,10 @@ def get_LocAndTimezoneStr(scope_df, scope_idx):
 
 # Creates lookup tables (LUT) containing local AltAz positions of the Sun and Moon
 # First create a table with 5-min precision, then interpolate for 1-min precision.
-def make_LUT_AltAzs(CSV_core_folder, instrument, obs_start: dt.datetime, obs_end: dt.datetime, Loc):
-    LUT_FOLDER = CSV_core_folder / "intermediate" / "lut_altaz"
+def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime, obs_end: dt.datetime, Loc):
+    LUT_FOLDER = CSV_intermediate_folder / "lut_altaz"
     LUT_FOLDER.mkdir(parents=True, exist_ok=True)
-    LUT_FILENAME = f'sun_moon_altazs_at_{instrument}_TDB{obs_start.strftime("%b-%d-%Y")}_to_TDB{obs_end.strftime("%b-%d-%Y")}.ecsv.gz'
+    LUT_FILENAME = f'sun_moon_altazs_at_{instrument}_TDB{obs_start.strftime("%b-%d-%Y")}_to_TDB{obs_end.strftime("%b-%d-%Y")}.csv.gz'
     LUT_FILEPATH_ALTAZS = LUT_FOLDER / LUT_FILENAME
 
     if not os.path.exists(LUT_FILEPATH_ALTAZS):
@@ -202,31 +202,39 @@ def make_LUT_AltAzs(CSV_core_folder, instrument, obs_start: dt.datetime, obs_end
         moon_alt, moon_az = interpolate_altaz(obstimes_5m, moonaltazs, obstimes_1m)
 
 
-        # Build QTable with these altazs
+        # Build dataframe with these altazs and export
         start = time.time()
 
-        tcols = ['obstime', 'sun_alt', 'sun_az', 'moon_alt', 'moon_az']
-        t = QTable([obstimes_1m, sun_alt, sun_az, moon_alt, moon_az],
-                   names=tcols)
-        for col in tcols[1:]:  # Reduce to 3 decimal points
-            t[col] = np.round(t[col], 3).astype(np.float32)
-        t.write(LUT_FILEPATH_ALTAZS, overwrite=True)
+        df_altazs = pd.DataFrame({
+            "obstime": obstimes_1m.iso,
+            "sun_alt": np.round(sun_alt, 3).astype(np.float32),
+            "sun_az": np.round(sun_az, 3).astype(np.float32),
+            "moon_alt": np.round(moon_alt, 3).astype(np.float32),
+            "moon_az": np.round(moon_az, 3).astype(np.float32),
+        })
+        df_altazs.to_csv(
+            LUT_FILEPATH_ALTAZS,
+            index=False,
+            compression="gzip",
+            float_format="%.3f",
+        )
 
         time_taken = time.time() - start
         print(f'>> AltAz LUT exported to {LUT_FILEPATH_ALTAZS}. ({time_taken:.2f} s)')
 
     else:
-        print('[P2_MultiprocessingWrapper] Appropriate un-Moon AltAz LUT already exists.')
+        print('[P2_MultiprocessingWrapper] Appropriate Sun-Moon AltAz LUT already exists.')
 
     return LUT_FILEPATH_ALTAZS
 
 
 # Creates a lookup table (LUT) containing hourly precomputed lunar brightness in mags and Mie scattering parameters
 # as a function of effective band wavelength (that is pulled from another lookup table).
-def make_LUT_Moon(CSV_core_folder, instrument, obs_start, obs_end, toggle_moonlight_noise,
-                  latvalue, lonvalue, altvalue, LUT_FILEPATH_ALTAZS):
-    LUT_FOLDER = CSV_core_folder / "intermediate" / "lut_altaz"
-    LUT_FILENAME = f'lunar_TOA_Mags_at_{instrument}_TDB{obs_start.strftime("%b-%d-%Y")}_to_TDB{obs_end.strftime("%b-%d-%Y")}.ecsv.gz'
+def make_LUT_Moon(CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise,
+                  LUT_FILEPATH_ALTAZS):
+    LUT_FOLDER = CSV_intermediate_folder / "lut_moonmags"
+    LUT_FOLDER.mkdir(parents=True, exist_ok=True)
+    LUT_FILENAME = f'lunar_TOA_Mags_at_{instrument}_UTC{obs_start.strftime("%b-%d-%Y")}_to_UTC{obs_end.strftime("%b-%d-%Y")}.csv.gz'
     LUT_FILEPATH_MOON = LUT_FOLDER / LUT_FILENAME
 
     if toggle_moonlight_noise and not os.path.exists(LUT_FILEPATH_MOON):
@@ -234,163 +242,42 @@ def make_LUT_Moon(CSV_core_folder, instrument, obs_start, obs_end, toggle_moonli
 
         start = time.time()
 
-        # Sample all hours from ObsStart to ObsEnd
-        obs_start_LUT = Time(obs_start - dt.timedelta(days=2), format='datetime', scale='tdb')
-        obs_end_LUT = Time(obs_end + dt.timedelta(days=2), format='datetime', scale='tdb')
+        # Sample all hours from obs_start to obs_end
+        obs_start_LUT = obs_start - dt.timedelta(days=2)
+        obs_start_LUT.replace(hour=0, minute=0, second=0)
+
+        obs_end_LUT = obs_end + dt.timedelta(days=2)
+        obs_end_LUT.replace(hour=0, minute=0, second=0)
 
         n_hours = int((obs_end_LUT - obs_start_LUT).total_seconds() // 3600) + 1
-        hourly_times = np.array([obs_start_LUT.replace(hour=0, minute=0, second=0) + dt.timedelta(hours=int(i))
-                                 for i in np.arange(n_hours)])
 
-        # # Get effective wavelengths and zeropoint irradiance of filters
-        # df_filters = pd.read_csv(rf'{csvcorepath}/filter_information.csv')
-        # filter_names = df_filters['filter']
-        # effective_wavelengths = df_filters['effective_wavelength']
-        # zeropoint_irradiances = df_filters['f_lamdba_zeropoint_e-11']
-        # allen_full_moon_mags = df_filters['allen_fullmag']
-
-
-
-        # # lime_tbx setups before simulation        
-        # eocfi = EocfiPath(main_eocfi_path=rf'{appdata_folder}\eocfi_data',
-        #                   custom_eocfi_path=rf'{appdata_folder}\eocfi_data')
-        # kernels = KernelsPath(main_kernels_path=rf'{appdata_folder}\kernels',
-        #                       custom_kernel_path=rf'{appdata_folder}\kernels')
-        # settings = SettingsManager()     # To get default coefficients & SRF for fit
-        # default_srf = settings.get_default_srf()
-        # locationPoints = SurfacePoint(latitude=latvalue,
-        #                               longitude=lonvalue,
-        #                               altitude=(altvalue * u.m).to(u.km).value,
-        #                               dt=hourly_times)
+        hourly_times = np.array([obs_start_LUT + dt.timedelta(hours=i)
+                                 for i in range(n_hours)])
         
-        # # The LIME model only reliably works when |phase angle| <= 90 deg -- remove the rest! (Also massively improves time)
-        # moon_data = MoonDataFactory().get_md_from_surface(locationPoints, kernels)
-        # phase_angles = np.array([mdata.mpa_degrees for mdata in moon_data])
-        # phase_mask = (np.abs(phase_angles) <= 90)
+        # Get phase angles
+        phase_angles = np.zeros_like(hourly_times)
+        moon = ephem.Moon()
+        for i, t in enumerate(hourly_times):
+            moon.compute(t)  # Assume TDB ~ UTC, which is sufficient for hourly precision
+            fraction_of_illumination = moon.moon_phase
 
-        # # In order to speed up simulation time even more, remove daytime because we don't use these
-        # SunAlt_table = QTable.read(LUT_FILEPATH_ALTAZS, format='ascii.ecsv')
-        # obstimes = SunAlt_table['obstime'].datetime
-        # minutes = np.array([dt.minute for dt in obstimes])
-        # SunAlt_table = SunAlt_table[(obstimes >= min(hourly_times)) & (obstimes <= max(hourly_times)) & (minutes == 0)]
-        # night_mask = (SunAlt_table['sun_alt'] <= 0) # This is intentionally not -18, because hourly precision
+            phase_angle_deg = np.degrees(np.arccos(2*fraction_of_illumination - 1))
+            phase_angles[i] = phase_angle_deg
 
-        # # Specify times to begin simulation
-        # hourly_times_good = hourly_times[phase_mask & night_mask]
-        # locationPoints_good = SurfacePoint(latitude=latvalue,
-        #                                    longitude=lonvalue,
-        #                                    altitude=(altvalue * u.m).to(u.km).value,
-        #                                    dt=hourly_times_good)
-        
-        # # Begin simulation
-        # sim = LimeSimulation(eocfi_path=eocfi,
-        #                     kernels_path=kernels,
-        #                     settings_manager=settings,
-        #                     verbose=False)
-        # sim.set_simulation_changed()  # Set invalid simulation; force update irradiance simulation afterwards
-        # sim.update_irradiance(srf=default_srf, # THE heavy function -- times minimized
-        #                       signals_srf=default_srf,
-        #                       point=locationPoints_good,
-        #                       cimel_coeff=settings.get_cimel_coef())
-
-        # # Acquire irradiance for all wavelengths in filter_information
-        # irradiance_spectra = sim.get_elis()  # Get irradiance spectra at all midnights_at_telescope
-
-        # wavelength_mask = np.isin(irradiance_spectra[0].wlens, np.around(effective_wavelengths))
-        # irradiances = np.array([spectrum.data[wavelength_mask] for spectrum in irradiance_spectra])
-        # irradiances = (irradiances * u.W / u.m**2 / u.nm).to(1e-11 * u.erg / u.cm**2 / u.s / u.angstrom).value
-        # zeropoint_irradiances_to_divide = zeropoint_irradiances.to_numpy().reshape(1, -1)
-        # moon_mags = -2.5 * np.log10(irradiances / zeropoint_irradiances_to_divide)
-
-        Vmag_allen = calcMoonMag(-12.73, phase_angles)
+        # Get lunar magnitudes
+        Vmag = calcMoonMag(-12.73, phase_angles)
 
         # Create dataframe and merge calculated moon_mags
-        df_final = pd.DataFrame({'time_UTC': hourly_times,
-                                 'phase_angle_deg': phase_angles,
-                                 'Vmag_allen': Vmag_allen,
-                                 'LIME_used': 1})
-        colnames = ['time_UTC'] + [f'{f}mag' for f in filter_names]
-        moon_mags_and_time = np.hstack((hourly_times_good.reshape(-1, 1), moon_mags))
-        df_good_times = pd.DataFrame(moon_mags_and_time, columns=colnames)
-        
-        df_final = pd.merge(df_final, df_good_times, how='left', on='time_UTC')
-
-        # Extrapolate the missing magnitudes using the Allen (1976) model whose full mag values
-        # are precalculated from LIME from Oct 25 - May 26 at TNT ULTRASPEC
-        first_mag_col = 4
-        df_final.loc[df_final.iloc[:, first_mag_col].isna(), 'LIME_used'] = 0  # Marks use of simplified model
-        for i, col in enumerate(df_final.columns[first_mag_col:]):
-            allen_mags = calcMoonMag(allen_full_moon_mags.iloc[i], df_final['phase_angle_deg'])
-            df_final[col] = df_final[col].astype(float).fillna(allen_mags)
-
-        time_taken = time.time()-start
-        print(f'>> Lunar hourly magnitudes computed. ({time_taken:.2f} s)')
-
-
-        # Lunar mag calculations are done! Now onto Mie scattering AERONET parameters retrieval.
-        start = time.time()
-        df_Mie = pd.read_csv(rf'{csvcorepath}/AERONET_AOD+INV_Level2_Daily_V3_monthly-median.csv')
-        # Sort by haversine distance
-        df_Mie['distance_km'] = haversine_distances(latvalue, lonvalue,
-                                                    df_Mie['Site_Latitude(Degrees)'].values,
-                                                    df_Mie['Site_Longitude(Degrees)'].values)
-        df_Mie = df_Mie.sort_values(by=['distance_km', 'Month']).reset_index(drop=True)
-
-        # Acquire inter/extrapolation parameters based on band effective wavelength as list of Series
-        condlist = [effective_wavelengths < 440,
-                    (effective_wavelengths >= 440) & (effective_wavelengths < 675),
-                    effective_wavelengths >= 675]
-        
-        angstrom_choices = ['340-440_Angstrom_Exponent',
-                            '440-675_Angstrom_Exponent',
-                            '440-870_Angstrom_Exponent']
-        angstrom_cols = np.select(condlist, angstrom_choices)
-
-        wlen_choices = [440, 675, 870]
-        wlen_from = np.select(condlist, wlen_choices)
-        AOD_Extinction_from_cols = [f'AOD_Extinction-Total[{w}nm]' for w in wlen_from]
-        AOD_Scattering_from_cols = [f'Scattering_AOD[{w}nm]' for w in wlen_from]
-
-        g_from_choices = [440, 440, 675]
-        g_to_choices = [675, 675, 870]
-        gwl_from = np.select(condlist, g_from_choices)
-        gwl_to = np.select(condlist, g_to_choices)
-
-        # Further refine g_from/g_to for wl > 870
-        wl_mask = (effective_wavelengths > 870)
-        gwl_from[wl_mask], gwl_to[wl_mask] = 870, 1020
-
-        g_from_cols = [f'Asymmetry_Factor-Total[{g}nm]' for g in gwl_from]
-        g_to_cols = [f'Asymmetry_Factor-Total[{g}nm]' for g in gwl_to]
-
-        # Interpolate/Extrapolate AODs and g
-        AOD_Extinction_cols = [f'AOD_Extinction_{f}band' for f in filter_names]
-        AOD_Scattering_cols = [f'AOD_Scattering_{f}band' for f in filter_names]
-        Asymmetry_Factor_cols = [f'Asymmetry_Factor_{f}band' for f in filter_names]
-
-        lambda_over_lambda0_alpha = ((effective_wavelengths.values / wlen_from).reshape(1, -1)) \
-                                    ** (-df_Mie[angstrom_cols].values)
-
-        df_Mie[AOD_Extinction_cols] = df_Mie[AOD_Extinction_from_cols].values * lambda_over_lambda0_alpha
-        df_Mie[AOD_Scattering_cols] = df_Mie[AOD_Scattering_from_cols].values * lambda_over_lambda0_alpha
-        df_Mie[Asymmetry_Factor_cols] = linear_interpolation(effective_wavelengths.values,
-                                                             gwl_from, df_Mie[g_from_cols].values,
-                                                             gwl_to, df_Mie[g_to_cols].values)
-
-        # Now, pick closest AERONET Site and month and transport to df_final!
-        MieColnames = AOD_Extinction_cols + AOD_Scattering_cols + Asymmetry_Factor_cols
-        def getMieParameters(row):
-            obsMonth = row['time_UTC'].month
-            df_Mie_closest = df_Mie[df_Mie.Month == obsMonth].iloc[0]
-            MieParameters = df_Mie_closest[MieColnames].values
-            return MieParameters
-
-        df_final[MieColnames] = df_final.apply(lambda row: getMieParameters(row), axis=1, result_type='expand')
+        df_moon = pd.DataFrame({'time_UTC': hourly_times,
+                                'phase_angle_deg': phase_angles,
+                                'Vmag': Vmag
+        })
 
         # Save to dataframe as lookup table, and we are done!
-        df_final.to_csv(LUT_FILEPATH_MOON, index=False)
+        df_moon.to_csv(LUT_FILEPATH_MOON, index=False, compression="gzip", float_format="%.3f")
 
-        print(f'>> AERONET Aerosol parameters computed. LUT exported to {LUT_FILEPATH_MOON} ({time.time()-start:.2f} s)')
+        time_taken = time.time()-start
+        print(f'>> Moonlight mag. LUT exported to {LUT_FILEPATH_MOON} ({time_taken:.2f} s)')
 
     elif toggle_moonlight_noise == False:
         pass
@@ -411,9 +298,9 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     download_IERS(CSV_core_folder)
     make_OutputGraphDir(output_folder, instrument, filter_name, obs_start, obs_end)
     Loc, latvalue, lonvalue, altvalue, timezone_str = get_LocAndTimezoneStr(scope_df, scope_idx)
-    LUT_FILEPATH_ALTAZS = make_LUT_AltAzs(CSV_core_folder, instrument, obs_start, obs_end, Loc)
-    # make_LUT_Moon(csvcorepath, Inst, ObsStart, ObsEnd, Moon_Noise,
-    #               latvalue, lonvalue, altvalue, LUT_FILEPATH_ALTAZS) 
+    LUT_FILEPATH_ALTAZS = make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start, obs_end, Loc)
+    make_LUT_Moon(CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise,
+                  LUT_FILEPATH_ALTAZS) 
 
 
     # Multiprocessing start
@@ -425,30 +312,30 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
         print(f'+++ Phase Two: Engaged for 1 core. +++')
     
 
-    # Directory of all Phase Two Inputs (dont touch!)
-    sky_noise_text = 'Y-SkyNoise' if toggle_sky_noise else 'N-SkyNoise'
-    defocus_text = 'Y-Defocus' if toggle_defocus else 'N-Defocus'
-    config_str = f'{instrument}_{filter_name}-band_for_{run_mode}_{sky_noise_text}_{defocus_text}'
+    # # Directory of all Phase Two Inputs (dont touch!)
+    # sky_noise_text = 'Y-SkyNoise' if toggle_sky_noise else 'N-SkyNoise'
+    # defocus_text = 'Y-Defocus' if toggle_defocus else 'N-Defocus'
+    # config_str = f'{instrument}_{filter_name}-band_for_{run_mode}_{sky_noise_text}_{defocus_text}'
 
-    filename_pattern = (
-        rf"{config_str}_{metric_mode}-Mode_{viable_cumulative_cut*100}%_Cut_*.csv"
-    )
-    jobs = list((CSV_intermediate_folder / "phase_2_inputs").glob(filename_pattern))
+    # filename_pattern = (
+    #     rf"{config_str}_{metric_mode}-Mode_{viable_cumulative_cut*100}%_Cut_*.csv"
+    # )
+    # jobs = list((CSV_intermediate_folder / "phase_2_inputs").glob(filename_pattern))
     
 
-    # Start multiprocessing and wrap with tqdm to get progress bar
-    with parallel_config(backend='loky', prefer='processes', inner_max_num_threads=1):
-        for _ in Parallel(n_jobs=cores_actually_used, pre_dispatch=4*cores_actually_used, return_as='generator_unordered')(
-            delayed(P2_MultiprocessingProcess.P2Predictor)(
-                CSV_core_folder, csv_initiated, output_folder,
-                obs_start, obs_end, scope_df, scope_idx,
-                instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut,
-                toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
-                toggle_graph_outputs, event_weight_graph_threshold,
-                Loc, timezone_str
-                ) for csv_initiated in tqdm(jobs, desc="CSVs initiated")
-            ):
-            pass
+    # # Start multiprocessing and wrap with tqdm to get progress bar
+    # with parallel_config(backend='loky', prefer='processes', inner_max_num_threads=1):
+    #     for _ in Parallel(n_jobs=cores_actually_used, pre_dispatch=4*cores_actually_used, return_as='generator_unordered')(
+    #         delayed(P2_MultiprocessingProcess.P2Predictor)(
+    #             CSV_core_folder, csv_initiated, output_folder,
+    #             obs_start, obs_end, scope_df, scope_idx,
+    #             instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut,
+    #             toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
+    #             toggle_graph_outputs, event_weight_graph_threshold,
+    #             Loc, timezone_str
+    #             ) for csv_initiated in tqdm(jobs, desc="CSVs initiated")
+    #         ):
+    #         pass
 
     print(f'+++ Multiprocessing complete! +++')
     

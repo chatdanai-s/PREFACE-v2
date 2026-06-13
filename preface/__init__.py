@@ -93,7 +93,7 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
 
 
     # Run pipeline (Phase 1)
-    print('\nRunning Phase 1 of PREFACE...\n')
+    print('\nRunning Phase One of PREFACE...\n')
 
     P1_ModCheck.Check(CSV_core_folder)
     P1_ImpactMerger.ExoOrgImpacts(CSV_core_folder)
@@ -110,7 +110,8 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
                                   *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut, RMin)
 
 
-    # # Run pipeline (Phase 2)
+    # Run pipeline (Phase 2)
+    print('\nRunning Phase Two of PREFACE...\n')
 
     # P2_MultiprocessingWrapper.P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     #                                  scope_df, scope_idx, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,

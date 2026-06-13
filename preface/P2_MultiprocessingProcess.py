@@ -163,8 +163,8 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
     def MoonNoiseMetric(lunar_altaz, target_altaz,
                         moon_mag, AOD_scatter, AOD_absorption, asymmetry_factor,
                         dif_BS, delta_midnight, dif_BE, filter):
-        from P1_RankMaker import findSkyB
-        from P2MP_Wrapper_Datacenter import getFilterParams
+        from .P1_RankMaker import findSkyB
+        from .P2_MultiprocessingProcess import getFilterParams
 
         # Acquire effective wavelength
         effective_wavelength, _, _ = getFilterParams(csvcorepath, filter)

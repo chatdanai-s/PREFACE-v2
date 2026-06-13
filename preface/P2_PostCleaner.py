@@ -1,7 +1,7 @@
 # Part 8 of the pipeline - concatenates all events for all viable planets into final data products.
 
 # Import from future to access this!
-# NOTE: Imports from future must always go first.
+# Note: Imports from future must always go first.
 
 import os
 import glob
@@ -11,21 +11,22 @@ import pandas as pd
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
-from ImpactMerger import BWriter
+from .P1_ImpactMerger import BWriter
 
 
 # With both phases fired, all outputs must be brought together.
 # Concatenation function
-def get_merged_csv(flist, ncores):
+def get_merged_csv(filelist, ncores):
     dfs = Parallel(n_jobs=ncores, backend='loky')(delayed(pd.read_csv)(f)
-                                                  for f in tqdm(flist, desc='CSVs merged'))
+                                                  for f in tqdm(filelist, desc='CSVs merged'))
     df = pd.concat(dfs, ignore_index=True)
     return df
+
 
 def Cleaner(csvrankpath, csvoutpath, csvendpath, csvscorepath,
             ds, S, Inst, Filter, Run_Mode, Add_Noise, Defocus, Metric_Mode, ViableCut,
             ObsStart, ObsEnd, ncores):
-    print("[PostCleaner] Merging all CSV outputs...")
+    print("[P2_PostCleaner] Merging all CSV outputs...")
 
     # COMMON ROUTE: First, combine all output CSVs to one big dataframe
     # P2 input finders (don't touch these!)
@@ -84,7 +85,7 @@ def Cleaner(csvrankpath, csvoutpath, csvendpath, csvscorepath,
     # Export the final DataFrame to a csv file.
     dw.to_csv(rf'{csvendpath}/Full_Event_List_for_{Inst}_{Filter}-band,{Run_Mode}_{Metric_Mode}-modes,{Add_Noise},{Defocus},{ViableCut}_Cut, {ObsStart.strftime("%b_%d_%Y")}_to_{ObsEnd.strftime("%b_%d_%Y")}.csv', 
               index=False)
-    print("[PostCleaner] Full list of ranked events created.")
+    print("[P2_PostCleaner] Full list of ranked events created.")
 
 
     # ROUTE 2: Full list of cumulative scores -- dc
@@ -116,4 +117,4 @@ def Cleaner(csvrankpath, csvoutpath, csvendpath, csvscorepath,
     dc.to_csv(rf'{csvscorepath}/CumulativeObsScore_for_{Inst}_{Filter}-band,{Run_Mode}_{Metric_Mode}-modes,{Add_Noise},{Defocus},{ViableCut}_Cut, {ObsStart.strftime("%b_%d_%Y")}_to_{ObsEnd.strftime("%b_%d_%Y")}.csv',
               index=False)
     
-    print('[PostCleaner] Cumulative observability scores calculated.')
+    print('[P2_PostCleaner] Cumulative observability scores calculated.')

@@ -29,9 +29,9 @@ OutputConfigs = OutputConfigurations(
 )
 MoonlightConfigs = MoonlightNoiseConfigurations(
     toggle_moonlight_noise=True,
-    scattering_aod="Default",
-    absorption_aod="Default",
-    asymmetry_factor="Default",
+    scattering_aod=0.2,
+    absorption_aod=0.3,
+    asymmetry_factor=0.6,
     moonlight_amplification_factor=5
 )
 MultiprocessingConfigs = MultiprocessingConfigurations(

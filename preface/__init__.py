@@ -58,9 +58,9 @@ def get_available_filters_list(instrument: str):
     available_filters = sorted(list(mzp_filters & msky_filters))
     return available_filters
 
-
-def open_scope_csv():
-    csv_path = CSV_core_folder / "Scope.csv"
+# Open core CSV files remotely
+def open_core_csv(csv_name: str):
+    csv_path = CSV_core_folder / csv_name
     
     if sys.platform.startswith("win"):
         os.startfile(csv_path)
@@ -68,6 +68,12 @@ def open_scope_csv():
         subprocess.run(["open", str(csv_path)], check=True)
     else:  # Linux
         subprocess.run(["xdg-open", str(csv_path)], check=True)
+    
+def open_scope_csv():
+    open_core_csv("Scope.csv")
+
+def open_aggregated_aeronet_csv():
+    open_core_csv("AERONET_AOD+INV_Level2_Daily_V3_monthly-median.csv")
 
 
 ##### Main preface function #####

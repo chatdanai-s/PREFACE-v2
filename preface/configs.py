@@ -251,7 +251,7 @@ class MoonlightNoiseConfigurations:
             if (not isNumber(asymmetry_factor) or not (-1 < asymmetry_factor < 1)):
                 InputErrorFlag = True
                 print(f"[InputCheck] '{asymmetry_factor}' is not a valid asymmetry_factor! "
-                      "Is it a number between -1 and +1? (0.5-0.8 recommended)?")
+                      "Is it a number between -1 and +1? (0.5-0.8 recommended)")
 
             # Check moonlight_amplification_factor
             if not isNumber(moonlight_amplification_factor):

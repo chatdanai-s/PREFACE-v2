@@ -225,13 +225,10 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
     else:
         print('[P2_MultiprocessingWrapper] Appropriate Sun-Moon AltAz LUT already exists.')
 
-    return LUT_FILEPATH_ALTAZS
-
 
 # Creates a lookup table (LUT) containing hourly precomputed lunar brightness in mags and Mie scattering parameters
 # as a function of effective band wavelength (that is pulled from another lookup table).
-def make_LUT_Moon(CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise,
-                  LUT_FILEPATH_ALTAZS):
+def make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise):
     LUT_FOLDER = CSV_intermediate_folder / "lut_moonmags"
     LUT_FOLDER.mkdir(parents=True, exist_ok=True)
     LUT_FILENAME = f'lunar_TOA_Mags_at_{instrument}_UTC{obs_start.strftime("%b-%d-%Y")}_to_UTC{obs_end.strftime("%b-%d-%Y")}.csv.gz'
@@ -264,14 +261,19 @@ def make_LUT_Moon(CSV_intermediate_folder, instrument, obs_start, obs_end, toggl
             phase_angle_deg = np.degrees(np.arccos(2*fraction_of_illumination - 1))
             phase_angles[i] = phase_angle_deg
 
-        # Get lunar magnitudes
-        Vmag = calcMoonMag(-12.73, phase_angles)
+        # Get filter information
+        df_filters = pd.read_csv(CSV_core_folder / 'filter_information.csv')
+        filter_names = df_filters['filter']
+        allen_full_moon_mags = df_filters['allen_fullmag']
 
-        # Create dataframe and merge calculated moon_mags
-        df_moon = pd.DataFrame({'time_UTC': hourly_times,
-                                'phase_angle_deg': phase_angles,
-                                'Vmag': Vmag
+        # Create dataframe and get lunar magnitudes per phase angles
+        df_moon = pd.DataFrame({
+            "time_UTC": hourly_times,
+            "phase_angle_deg": phase_angles.astype(np.float32),
         })
+        for filter_name, full_mag in zip(filter_names, allen_full_moon_mags):
+            df_moon[f"{filter_name}mag"] = calcMoonMag(full_mag, phase_angles).astype(np.float32)
+
 
         # Save to dataframe as lookup table, and we are done!
         df_moon.to_csv(LUT_FILEPATH_MOON, index=False, compression="gzip", float_format="%.3f")
@@ -298,9 +300,8 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     download_IERS(CSV_core_folder)
     make_OutputGraphDir(output_folder, instrument, filter_name, obs_start, obs_end)
     Loc, latvalue, lonvalue, altvalue, timezone_str = get_LocAndTimezoneStr(scope_df, scope_idx)
-    LUT_FILEPATH_ALTAZS = make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start, obs_end, Loc)
-    make_LUT_Moon(CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise,
-                  LUT_FILEPATH_ALTAZS) 
+    make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start, obs_end, Loc)
+    make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise) 
 
 
     # Multiprocessing start

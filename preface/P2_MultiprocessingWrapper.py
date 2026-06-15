@@ -150,7 +150,7 @@ def get_LocAndTimezoneStr(scope_df, scope_idx):
     latvalue, lonvalue, altvalue = Loc.lat.value, Loc.lon.value, Loc.height.value
     timezone_str = tf.timezone_at(lat=latvalue, lng=lonvalue)
 
-    return Loc, latvalue, lonvalue, altvalue, timezone_str
+    return Loc, timezone_str
 
 
 # Creates lookup tables (LUT) containing local AltAz positions of the Sun and Moon
@@ -225,6 +225,8 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
     else:
         print('[P2_MultiprocessingWrapper] Appropriate Sun-Moon AltAz LUT already exists.')
 
+    return LUT_FILEPATH_ALTAZS
+
 
 # Creates a lookup table (LUT) containing hourly precomputed lunar brightness in mags and Mie scattering parameters
 # as a function of effective band wavelength (that is pulled from another lookup table).
@@ -286,6 +288,7 @@ def make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_star
     else:
         print('[P2_MultiprocessingWrapper] Moon background metric LUT already exists.')
 
+    return LUT_FILEPATH_MOON
 
 # Queues and executes Phase Two transit predictor for all planets.
 def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
@@ -298,10 +301,10 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     print('[P2_MultiprocessingWrapper] Pre-multiprocessing procedures initiating...')
 
     download_IERS(CSV_core_folder)
-    make_OutputGraphDir(output_folder, instrument, filter_name, obs_start, obs_end)
-    Loc, latvalue, lonvalue, altvalue, timezone_str = get_LocAndTimezoneStr(scope_df, scope_idx)
-    make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start, obs_end, Loc)
-    make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise) 
+    graph_folder_path = make_OutputGraphDir(output_folder, instrument, filter_name, obs_start, obs_end)
+    Loc, timezone_str = get_LocAndTimezoneStr(scope_df, scope_idx)
+    LUT_FILEPATH_ALTAZS = make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start, obs_end, Loc)
+    LUT_FILEPATH_MOON = make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise) 
 
 
     # Multiprocessing start
@@ -313,30 +316,30 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
         print(f'+++ Phase Two: Engaged for 1 core. +++')
     
 
-    # # Directory of all Phase Two Inputs (dont touch!)
-    # sky_noise_text = 'Y-SkyNoise' if toggle_sky_noise else 'N-SkyNoise'
-    # defocus_text = 'Y-Defocus' if toggle_defocus else 'N-Defocus'
-    # config_str = f'{instrument}_{filter_name}-band_for_{run_mode}_{sky_noise_text}_{defocus_text}'
+    # Directory of all Phase Two Inputs (dont touch!)
+    sky_noise_text = 'Y-SkyNoise' if toggle_sky_noise else 'N-SkyNoise'
+    defocus_text = 'Y-Defocus' if toggle_defocus else 'N-Defocus'
+    config_str = f'{instrument}_{filter_name}-band_for_{run_mode}_{sky_noise_text}_{defocus_text}'
 
-    # filename_pattern = (
-    #     rf"{config_str}_{metric_mode}-Mode_{viable_cumulative_cut*100}%_Cut_*.csv"
-    # )
-    # jobs = list((CSV_intermediate_folder / "phase_2_inputs").glob(filename_pattern))
+    filename_pattern = (
+        rf"{config_str}_{metric_mode}-Mode_{viable_cumulative_cut*100}%_Cut_*.csv"
+    )
+    jobs = list((CSV_intermediate_folder / "phase_2_inputs").glob(filename_pattern))
     
 
-    # # Start multiprocessing and wrap with tqdm to get progress bar
-    # with parallel_config(backend='loky', prefer='processes', inner_max_num_threads=1):
-    #     for _ in Parallel(n_jobs=cores_actually_used, pre_dispatch=4*cores_actually_used, return_as='generator_unordered')(
-    #         delayed(P2_MultiprocessingProcess.P2Predictor)(
-    #             CSV_core_folder, csv_initiated, output_folder,
-    #             obs_start, obs_end, scope_df, scope_idx,
-    #             instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut,
-    #             toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
-    #             toggle_graph_outputs, event_weight_graph_threshold,
-    #             Loc, timezone_str
-    #             ) for csv_initiated in tqdm(jobs, desc="CSVs initiated")
-    #         ):
-    #         pass
+    # Start multiprocessing and wrap with tqdm to get progress bar
+    with parallel_config(backend='loky', prefer='processes', inner_max_num_threads=1):
+        for _ in Parallel(n_jobs=cores_actually_used, pre_dispatch=4*cores_actually_used, return_as='generator_unordered')(
+            delayed(P2_MultiprocessingProcess.P2Predictor)(
+                CSV_core_folder, csv_initiated, output_folder,
+                obs_start, obs_end, scope_df, scope_idx,
+                instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut,
+                toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
+                toggle_graph_outputs, event_weight_graph_threshold,
+                Loc, timezone_str, graph_folder_path, LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
+                ) for csv_initiated in tqdm(jobs, desc="CSVs initiated")
+            ):
+            pass
 
     print(f'+++ Multiprocessing complete! +++')
     

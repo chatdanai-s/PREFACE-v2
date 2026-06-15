@@ -11,9 +11,6 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 CSV_core_folder = PACKAGE_ROOT / "csvbank" / "core"
 scope_df = pd.read_csv(CSV_core_folder / 'Scope.csv')
 
-# Minimum and maximum allowed observation years according to LUT
-min_obs_year, max_obs_year = 2025, 2050
-
 # Checks if variable is a number or boolean
 def isNumber(var):
     return isinstance(var, (int, float)) and not np.isnan(var)
@@ -145,14 +142,6 @@ class OutputConfigurations:
         elif observation_end - observation_start < timedelta(hours=1):
             InputErrorFlag = True
             print('[InputCheck] Invalid Observation times. Observation period must be at least one hour!')
-
-        if not (min_obs_year <= observation_start.year <= max_obs_year):
-            InputErrorFlag = True
-            print(f'[InputCheck] observation_start ({observation_start}) is outside the allowed range {min_obs_year}-{max_obs_year}!')
-
-        if not (min_obs_year <= observation_end.year <= max_obs_year):
-            InputErrorFlag = True
-            print(f'[InputCheck] observation_end ({observation_end}) is outside the allowed range {min_obs_year}-{max_obs_year}!')
 
 
         # Check if output folder exists

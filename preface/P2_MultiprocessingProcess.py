@@ -30,95 +30,105 @@ plt.rcParams.update({'font.size': 18})  # Font size over-ride
 from astropy.time import Time
 import astropy.units as u
 import astropy.coordinates as ac
-from astropy.table import QTable
 import scipy.integrate as integrate
 from scipy.interpolate import interp1d
 from dateutil.relativedelta import relativedelta
 
-# Master function for Phase Two - calculation of event times/metrics.
-def P2Predictor(csvcorepath, csvinpath, csvoutpath,
-                ObsStart, ObsEnd, ds, S, Inst, Filter, Run_Mode, Add_Noise, Defocus, Metric_Mode, ViableCut,
-                Moon_Noise, Scattering_AOD, Absorption_AOD, Asymmetry_Factor, Amplification_Factor, EventPercent_minThreshold,
-                Loc, timezone_str):
-    # Filename of this process
-    Name = os.path.basename(csvinpath)
 
-    # Constants needed
-    PT8 = 30        # Min obs. altitude for air mass = 2.
-    LIV = 88        # Max obs. altitude for the Liverpool instrument
-    Cross = -18     # Marker for night start/end altitude
+# Master function for Phase Two - calculation of event times/metrics.
+def P2Predictor(
+    CSV_core_folder, csv_initiated, output_folder,
+    obs_start, obs_end, scope_df, scope_idx,
+    instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut,
+    toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
+    toggle_graph_outputs, event_weight_graph_threshold,
+    Loc, timezone_str, graph_folder_path, LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
+    ):
+
+    # Filename of this process
+    csv_name = os.path.basename(csv_initiated)
+
+    # Altitude constants needed
+    minAlt   = 30        # Min obs. altitude for air mass = 2.
+    maxAlt   = 88        # Max obs. altitude for the Liverpool instrument
+    nightAlt = -18       # Marker for night start/end altitude
 
     # Blank arrays for use with time cut/observation ranking
-    TargetTimes = []
-    ErrTimes = []
+    transit_start_times = []
+    transit_start_times_err = []
     x_hold_fall = []
     x_hold_rise = []
     Cross_hold = []
 
+
     # Lookup table for moon noise calculations
-    if Moon_Noise == 'Y_Moon':
-        moonlightParams_name = rf'{csvcorepath}/Lookup_tables/lunar_TOA_Mags_at_{Inst}_{ObsStart.strftime("%b %d %Y")}_to_{ObsEnd.strftime("%b %d %Y")}.csv'
-        moonlightParams_LUT = pd.read_csv(moonlightParams_name)
+    if toggle_moonlight_noise == True:
+        moon_LUT = pd.read_csv(LUT_FILEPATH_MOON)
 
     # Lookup table for sun/moon AltAz skycoords
-    AltAz_name = rf'{csvcorepath}/Lookup_tables/sun_moon_altazs_at_{Inst}_{ObsStart.strftime("%b %d %Y")}_to_{ObsEnd.strftime("%b %d %Y")}.ecsv'
-    AltAz_LUT = QTable.read(AltAz_name, format='ascii.ecsv')
+    altaz_LUT = pd.read_csv(LUT_FILEPATH_ALTAZS)
 
-    sunaltazs_LUT = ac.SkyCoord(alt=AltAz_LUT['sun_alt'], az=AltAz_LUT['sun_az'], unit='deg',
-                                obstime=AltAz_LUT['obstime'], location=Loc, frame='altaz')
-    moonaltazs_LUT = ac.SkyCoord(alt=AltAz_LUT['moon_alt'], az=AltAz_LUT['moon_az'], unit='deg',
-                                 obstime=AltAz_LUT['obstime'], location=Loc, frame='altaz')
+    obstime_LUT = Time(altaz_LUT["obstime"])
+    sunaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['sun_alt'], az=altaz_LUT['sun_az'], unit='deg',
+                                obstime=obstime_LUT, location=Loc, frame='altaz')
+    moonaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['moon_alt'], az=altaz_LUT['moon_az'], unit='deg',
+                                 obstime=obstime_LUT, location=Loc, frame='altaz')
+
 
     def AltChecker(row): 
         # Specify sky co-ordinates of target.
-        LockOn = ac.SkyCoord(row['RA:HH'] + (row['RA:MM']/60) + (row['RA:SS']/3600),
-                             row['Dec:DD'] + np.sign(row['Dec:DD']) * (row['Dec:MM']/60 + row['Dec:SS']/3600),
-                             unit=(u.hourangle, u.deg), frame='icrs')
-        
+        LockOn = ac.SkyCoord(
+            row['RA:HH'] + (row['RA:MM']/60) + (row['RA:SS']/3600),
+            row['Dec:DD'] + np.sign(row['Dec:DD']) * (row['Dec:MM']/60 + row['Dec:SS']/3600),
+            unit=(u.hourangle, u.deg),
+            frame='icrs'
+        )
         return LockOn.ra.hour, LockOn.dec.degree
 
-    def T1Calc(row):
+
+    def T1_Calc(row):
         # Internal conversion to recover midpoint of first observation in BJD_TDB.    
-        period_d = row['P (day)'] 
+        period_d = row['P (day)']
+        period_sec = (period_d * u.d).to(u.s).value
         eph_obj = Time(row['T0 (HJD or BJD)'], format='jd').datetime    # Scale is not JD, but the format (245XXXX.XXX...) is!
-        ESecErr = (row['T0_err'] * u.d).to(u.s)       # Conversion of ephemeris error.
-        PSecErr = (row['P_err'] * u.d).to(u.s)        # Conversion of error in planet's determined period.
+        T0_sec_err = (row['T0_err'] * u.d).to(u.s)      # Conversion of ephemeris error.
+        P_sec_err = (row['P_err'] * u.d).to(u.s)        # Conversion of error in planet's determined period.
 
         # Recovers transit start time from published midpoint, returning a timedelta object.
-        StartTime = eph_obj - dt.timedelta(0.5 * row['T14'])
+        transit_start = eph_obj - dt.timedelta(0.5 * row['T14'])
         
-        # Builds range of n (epoch number) relevant for target/window combination.
-        # nstart finds final transit before our window begins, so you gotta add +1!
-        nStart = (ObsStart - StartTime).total_seconds() // (period_d * u.d).to(u.s).value + 1 
-        nEnd = (ObsEnd - StartTime).total_seconds() // (period_d * u.d).to(u.s).value
-        Range = np.arange(nStart, nEnd + 1)
+        # Builds range of epoch numbers relevant for target/window combination.
+        # epoch_start finds final transit before our window begins, so you gotta add +1!
+        epoch_start = (obs_start - transit_start).total_seconds() // period_sec + 1 
+        epoch_end = (obs_end - transit_start).total_seconds() // period_sec
+        epoch_range = np.arange(epoch_start, epoch_end+1)
 
         # Increase the number of orbits n to find future transit start times in our window.
-        for n in Range:
+        for epoch in epoch_range:
             # Calculation of individual transit start times
-            NextTransitTime = StartTime + (n * dt.timedelta(period_d))
-            TargetTimes.append(NextTransitTime)
+            transit_start_time = transit_start + (epoch * dt.timedelta(period_d))
+            transit_start_times.append(transit_start_time)
             
             # Calculation of total error at epoch n.
             # Uncertainty should scale overall as no. of orbits n, so this needs to be inside the squared term!
-            ErrTot = np.sqrt(ESecErr**2 + (n * PSecErr)**2).value              
-            ErrTimes.append(ErrTot)
+            transit_start_time_err = np.sqrt(T0_sec_err**2 + (epoch * P_sec_err)**2).value              
+            transit_start_times_err.append(transit_start_time_err)
     
 
-    # Calculation of key times.
-    def TimesCalc(row):
-        # Locked to index 0 except T1 because the other values are NaN at index 1 onwards
-        period_d = di['P (day)'][0]
-        Rs = di['R*'][0] * u.solRad
-        Rp = (di['Rp'][0] * u.R_jup).to(u.solRad)
+    # Calculation of key times during transit.
+    def Times_Calc(row):
+        # Locked to index 0 except T1, because the other values are NaN at index 1 onwards
+        period_d = df['P (day)'][0]
+        Rs = df['R*'][0] * u.solRad
+        Rp = (df['Rp'][0] * u.R_jup).to(u.solRad)
         T1 = row['T1']
-        T14 = di['T14'][0]
-        b = di['Impact Parameter'][0]
-        a_Calc = di['a_Calc'][0]
+        T14 = df['T14'][0]
+        b = df['Impact Parameter'][0]
+        a_Calc = df['a_Calc'][0]
         
-        # Calculates midpoint (T0), end of transit (T4) and length of transit event.
-        TransitMid = T1 + dt.timedelta(0.5 * T14)                
-        TransitEnd = T1 + dt.timedelta(T14)   
+        # Calculates midpoint (T0), end of transit (T4) and length of mid-transit event (T23).
+        T0 = T1 + dt.timedelta(0.5 * T14)                
+        T4 = T1 + dt.timedelta(T14)   
 
         try:
             with np.errstate(invalid='raise'):        
@@ -127,27 +137,28 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
                 )
                 # Recovers length of ingress/egress. abs is a necessary guess if T23 > T14 (unphysical soln.)     
                 T12 = abs(T14 - T23.value) / 2
-                T2 = T1 + dt.timedelta(T12)             # Time at end of ingress
-                T3 = TransitEnd - dt.timedelta(T12)     # Time at start of egress
+                T2 = T1 + dt.timedelta(T12)     # Time at end of ingress
+                T3 = T4 - dt.timedelta(T12)     # Time at start of egress
                 
                 # TESS targets have dodgy parameters - this calculation will catch them.
                 # Forces a FloatingPointError so the transit is treated as grazing, passed to except block.
                 np.sqrt((T3 - T2).total_seconds())
         
+
         # Grazing transits have no T23, so a different approach is needed.
         except FloatingPointError:
             T23 = 0      
-            T2 = TransitMid # Time at end of ingress
-            T3 = TransitMid # Time at start of egress
+            T2 = T0  # Time at end of ingress
+            T3 = T0  # Time at start of egress
 
         except ValueError:
-            sys.exit(f"Time error for {Name} ({PlanetName}) transiting at {T1} - flag me!")
+            sys.exit(f"Time error for {csv_name} ({planet_name}) transiting at {T1} - flag me!")
 
         # A solid baseline is important for a good transit curve!
-        BaseOne = T1 - dt.timedelta(hours=1)
-        BaseTwo = TransitEnd + dt.timedelta(hours=1) 
+        baseline_left = T1 - dt.timedelta(hours=1)
+        baseline_right = T4 + dt.timedelta(hours=1) 
 
-        return T2, TransitMid, T3, TransitEnd, BaseOne, BaseTwo
+        return T2, T0, T3, T4, baseline_left, baseline_right
 
     # Conversion from BJD_TDB to UTC
     def BJD2UTC(time, LockOn):
@@ -158,27 +169,27 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
 
         return JD_UTC
 
-    # Adds moon noise metric which is essentially SNR of yes moon / SNR of no moon, at start of observation.
+
+    # Adds moon noise metric which is essentially SNR with yes moon / SNR with no moon, at start of observation.
     # This works because the metrics are directly proportional to SNR.
     def MoonNoiseMetric(lunar_altaz, target_altaz,
                         moon_mag, AOD_scatter, AOD_absorption, asymmetry_factor,
-                        dif_BS, delta_midnight, dif_BE, filter):
-        from .P1_RankMaker import findSkyB
-        from .P2_MultiprocessingProcess import getFilterParams
+                        dif_BS, delta_midnight, dif_BE, filter_name):
+        from preface.P1_RankMaker import findSkyB
+        from preface.P2_MultiprocessingWrapper import getFilterParams
 
         # Acquire effective wavelength
-        effective_wavelength, _, _ = getFilterParams(csvcorepath, filter)
+        effective_wavelength, _, _ = getFilterParams(CSV_core_folder, filter_name)
 
         # Calculate moon background in mag/arcsec^2, then to mag at aperture much like the same way as skyB.
         # Based on Winkler (2022) model.
-        # TOA moon flux is computed using LIME model with Allen extrapolation.
         lunar_zenith = lunar_altaz.zen.rad
         target_zenith = target_altaz.zen.rad
         coord_targ = ac.SkyCoord(target_altaz.az, target_altaz.alt, unit="deg")
         coord_moon = ac.SkyCoord(lunar_altaz.az, lunar_altaz.alt, unit="deg")
         theta = coord_targ.separation(coord_moon).to(u.rad).value
 
-        # Remove out-of-observation values AND unphysical values when zeniths go beyond 90 deg
+        # timemask removes out-of-observation values AND zmask removes unphysical values when zeniths go beyond 90 deg
         timemask = (delta_midnight.value >= dif_BS) & (delta_midnight.value <= dif_BE)
         max_zenith = np.pi/2 - 0.002  # 0.002 prevents gradation underflow to zero
         zmask = (lunar_zenith <= max_zenith) & (target_zenith <= max_zenith)
@@ -201,7 +212,7 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
         # Scattering parameters
         scaleHeight = 8500       # Of Earth, in m
         g = asymmetry_factor     # Asymmetry factor for in Mie scattering
-        tau_R = np.exp(-Loc.height.value/scaleHeight) * (1.229e10) * effective_wavelength**(-4.05)  # Eqn 13
+        tau_R = np.exp(-Loc.height.value/scaleHeight) * (1.229e+10) * effective_wavelength**(-4.05)  # Eqn 13
         tau_M = AOD_scatter
         tau_sum = tau_R + tau_M  # Total scattering optical depth
         tau_tot = tau_sum + AOD_absorption  # Total optical depth
@@ -227,12 +238,16 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
         moon_intensity_mag = moon_mag - 2.5 * np.log10(moon_intensity_decrease)
         
         # Calculate noise metric
-        moon_flux = 10**(-0.4 * (findSkyB(moon_intensity_mag, ds, S, Defocus, Run_Mode) - Amplification_Factor))
-        if Add_Noise == 'Y_Noise':
-            sky_flux = 10**(-0.4 * findSkyB(ds[f'msky_{Filter}'].iloc[S], ds, S, Defocus, Run_Mode))
+        moon_flux = 10**(-0.4 * (
+            findSkyB(moon_intensity_mag, scope_df, scope_idx, toggle_defocus, run_mode) - moonlight_amplification_factor
+            )
+        )
+        if toggle_sky_noise == True:
+            sky_flux = 10**(-0.4 * findSkyB(scope_df[f'msky_{filter_name}'].iloc[scope_idx],
+                                            scope_df, scope_idx, toggle_defocus, run_mode))
         else:
             sky_flux = 0
-        target_flux = 10**(-0.4 * di[f'{Filter}mag'][0])
+        target_flux = 10**(-0.4 * df[f'{filter_name}mag'][0])
         
         MoonNoiseMetric = (1 + moon_flux/(sky_flux + target_flux)) ** (-0.5)
         return np.min(MoonNoiseMetric)  # Take min value (signifies highest SNR reduction)
@@ -240,77 +255,82 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
 
     ##### WE GET INTO CALCULATION AND PLOTTING HERE #####
     def EventMetric(row):
-        from P2MP_Wrapper_Datacenter import interpolate_altaz
+        from preface.P2_MultiprocessingWrapper import interpolate_altaz
 
         # Specify co-ordinates of target in sky coords, as previously converted.
-        LockOn = ac.SkyCoord(di['RA:HMS'][0], di['Dec:Deg'][0], unit=(u.hourangle, u.deg), frame='icrs')
+        LockOn = ac.SkyCoord(df['RA:HMS'][0], df['Dec:Deg'][0], unit=(u.hourangle, u.deg), frame='icrs')
         
+
         # Chooses appropriate midnight for each useful time (for graphing purposes).
         # Use relativedelta to avoid end of months/years breaking the code.
         T1 = row['T1']
-        T14 = di['T14'][0]  # It's NAN in second row onwards
-        t_samples = 1801
+        T14 = df['T14'][0]  # It's NAN in second row onwards
+        targ_samples = 1801
 
         # Set closest midnight (BJD) associated with start of transit T1
         if T1.hour >= 12:
-            MidnightSet = T1.replace(hour=0, minute=0, second=0, microsecond=0) + relativedelta(days=1)
+            midnight = T1.replace(hour=0, minute=0, second=0, microsecond=0) + relativedelta(days=1)
         else:
-            MidnightSet = T1.replace(hour=0, minute=0, second=0, microsecond=0)
-        midnight = Time(MidnightSet)                            # Astropy object conversion for compatibility.
+            midnight = T1.replace(hour=0, minute=0, second=0, microsecond=0)
+        midnight = Time(midnight)   # Astropy object conversion for compatibility.
 
-        delta_midnight = np.linspace(-12, 18, t_samples) * u.hour  # Time sampled 30h from midnight for target (1 min)
-        Moon_step = np.linspace(-12, 18, 21) * u.hour              # Time sampled 30h from midnight for moon sep (90 min)
+        # Retrieve relevent delta_midnights and observation times in range (midday to evening)
+        delta_midnight_targ = np.linspace(-12, 18, targ_samples) * u.hour  # Time sampled 30h from midnight for target (1 min)
+        delta_midnight_sep  = np.linspace(-12, 18, 21) * u.hour            # Time sampled 30h from midnight for moon sep (90 min)
 
-        times = midnight + delta_midnight          # Times for Moon/target calc
-        Moon_times = midnight + Moon_step          # Times for Moon/target separation calc
+        targ_times = midnight + delta_midnight_targ   # Times for Moon/target calc
+        sep_times  = midnight + delta_midnight_sep    # Times for Moon/target separation calc
+
 
         # Where is the sun and moon from midday to evening? 
         # LUTs are used here because it makes the pipeline way faster (2-3x faster, seriously)
         obstime_num = sunaltazs_LUT.obstime.mjd  # Convert to array for indexing mask
-        times_num = times.mjd
-        moon_times_num = Moon_times.mjd
+        targ_times_num = targ_times.mjd
+        sep_times_num  = sep_times.mjd
 
-        timemask = (obstime_num >= times_num[0]) & (obstime_num <= times_num[-1])
-        septimemask = np.isin(obstime_num, moon_times_num)
+        targ_timemask = (obstime_num >= targ_times_num[0]) & (obstime_num <= targ_times_num[-1])
+        sep_timemask  = np.isin(obstime_num, sep_times_num)
 
-        sunaltazs = sunaltazs_LUT[timemask]           # AltAz pairs created for sun
-        moonaltazs = moonaltazs_LUT[timemask]         # AltAz pairs created for moon (1 min)
-        moonsepaltazs = moonaltazs_LUT[septimemask]   # AltAz pairs created for moon (90 min)
+        sun_altazs = sunaltazs_LUT[targ_timemask]      # AltAz pairs created for sun (1 min)
+        moon_altazs = moonaltazs_LUT[targ_timemask]    # AltAz pairs created for moon (1 min)
+        moonsep_altazs = moonaltazs_LUT[sep_timemask]  # AltAz pairs created for moon (90 min)
+
 
         # Where is the target from midday to evening?
-        # For very, very significant speed optimization, use LockOn.transform_to() exactly once (instead of 5)
-        # Calculate for 5 minute precision then interpolate much like Sun and Moon
-        times_5m = times[::5]
-        frame = ac.AltAz(obstime=times_5m, location=Loc)
-        Targetaltazs = LockOn.transform_to(frame)        # AltAz pairs created for target
-        Target_alt, Target_az = interpolate_altaz(times_5m, Targetaltazs, times)
-        Targetaltazs = ac.SkyCoord(alt=Target_alt, az=Target_az, unit="deg",
-                                   obstime=times, location=Loc, frame='altaz')
+        # For very, very significant speed optimization, use LockOn.transform_to() exactly once (instead of 5 in PREFACE v1)
+        # Calculate altazs for 5 minute precision then interpolate much like Sun and Moon
+        targ_times_5m = targ_times[::5]
+        frame = ac.AltAz(obstime=targ_times_5m, location=Loc)
+        targ_altazs = LockOn.transform_to(frame)        # AltAz pairs created for target
+        targ_alt_1m, targ_az_1m = interpolate_altaz(targ_times_5m, targ_altazs, targ_times)
+        targ_altazs = ac.SkyCoord(alt=targ_alt_1m, az=targ_az_1m, unit="deg",
+                                  obstime=targ_times, location=Loc, frame='altaz')
         
-        moon_times_in_times = np.isin(times_num, moon_times_num)
-        Targetsepaltazs = Targetaltazs[moon_times_in_times]
+        sep_times_in_targ_times = np.isin(targ_times_num, sep_times_num)
+        targsep_altazs = targ_altazs[sep_times_in_targ_times]
 
         # Calculates separation between target and Moon at 21 intervals.
-        coord_targ = ac.SkyCoord(Targetsepaltazs.az, Targetsepaltazs.alt, unit="deg")
-        coord_moon = ac.SkyCoord(moonsepaltazs.az, moonsepaltazs.alt, unit="deg")
+        coord_targ = ac.SkyCoord(targsep_altazs.az, targsep_altazs.alt, unit="deg")
+        coord_moon = ac.SkyCoord(moonsep_altazs.az, moonsep_altazs.alt, unit="deg")
 
-        Sep = coord_targ.separation(coord_moon).value
-        FormSep = Sep.astype(int)
+        seps = coord_targ.separation(coord_moon).value
+        seps_int = seps.astype(int)
+
 
         ### LUNAR ILLUMINATION CALC (Returns moon phase in %)
         m = ephem.Moon()
         m.compute(T1)
-        Phase = m.moon_phase * 100
+        phase = m.moon_phase * 100
+
 
         ### CLEARANCE PROTOCOLS FOR MULTIPLE-EVENT RUNNING
         x_hold_fall.clear()
         x_hold_rise.clear()
         Cross_hold.clear()
-        
 
         # When will the transit, baseline and night begin and end -- relative to midnight? 
         # Finds differences either side of 00:00:00.
-        # NOTE: Take only the value when plotting! You can't plot a unit.
+        # Note: Take only the value when plotting! You can't plot a unit.
         def hours_relative_to_midnight(time):
             return (Time(time) - midnight).to('hr').value
 
@@ -326,118 +346,147 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
         # When does each event night start and end? 
         # Checks when sun path crosses twilight marker at y=-18, appends to x_hold_fall or _rise (depending on gradient).
         # x_holds_fall and _rise indicate delta_midnight in minutes where sunrise-sunfall crossover occurs
-        CrossCheck = sunaltazs.alt.value - Cross
+        cross_check = sun_altazs.alt.value - nightAlt
+        cross_check_idxs = np.arange(len(cross_check) - 1)
 
-        for i in np.arange(len(CrossCheck) - 1):
-            if CrossCheck[i] * CrossCheck[i+1] <= 0:    # If the moment sun crosses over y=-18 at i
-                x_ = delta_midnight.to('min').value[i]  # Time in delta_midnight where the crossing happens 
+        for i in cross_check_idxs:
+            if cross_check[i] * cross_check[i+1] <= 0:       # If the moment sun crosses over y=-18 at i to i+1
+                x_ = delta_midnight_targ.to('min').value[i]  # Time in delta_midnight_targ (minutes) where the crossing happens 
 
-                if sunaltazs.alt.value[i+1] < sunaltazs.alt.value[i]:      # If sunfall
+                if sun_altazs.alt.value[i+1] < sun_altazs.alt.value[i]:      # If sunfall
                     x_hold_fall.append(x_)
-                elif sunaltazs.alt.value[i+1] >= sunaltazs.alt.value[i]:   # If sunrise
+                elif sun_altazs.alt.value[i+1] >= sun_altazs.alt.value[i]:   # If sunrise
                     x_hold_rise.append(x_)
 
         # For "two-night events", with a bit at the start and end!
-        # It is the second condition in particular, which catches these.
-        NGen1 = [len(x_hold_fall) == len(x_hold_rise), x_hold_fall[0] > x_hold_rise[0], dif_T0 < 0]
-        NGen2 = [len(x_hold_fall) == len(x_hold_rise), x_hold_fall[0] > x_hold_rise[0], dif_T0 > 0]
-        NGen3 = [len(x_hold_fall) > len(x_hold_rise), dif_T0 < 0]  # Condition for two falls, one rise, transit in first night.
+        # It is the second condition in particular that catches most of these.
+        first_sunfall_cut = (x_hold_rise[0] < x_hold_fall[0])
+        nfalls, nrises = len(x_hold_fall), len(x_hold_rise)
+
+        T0_before_UTC_midnight = (dif_T0 < 0)
+        T0_after_UTC_midnight = (dif_T0 > 0)
+
+        # All condition keys are coded such that (T)ransit, sun(R)ise, sun(F)all.
+        # (Fall) |---(Transit)--- (Rise) ---day--- (Fall) ---|
+        conditions_TRF = [nfalls == nrises, first_sunfall_cut, T0_before_UTC_midnight]
+        # |--- (Rise) ---day--- (Fall) ---(Transit)---| (Rise)
+        conditions_RFT = [nfalls == nrises, first_sunfall_cut, T0_after_UTC_midnight]
+        # |--- (Fall) --- (Transit) --- (Rise) ---day--- (Fall) ---| (Rise)
+        conditions_FTRF = [nfalls > nrises, T0_before_UTC_midnight]
         
-        if all(NGen1):
-            x_hold_fall[0] = -780
-        elif all(NGen2):
-            x_hold_rise[0] = 1160
-        elif all(NGen3):
-            x_hold_rise.append(1160)
+        if all(conditions_TRF):         # One fall, one rise, transit in first night.
+            x_hold_fall[0] = -13*60
+        elif all(conditions_RFT):       # One fall, one rise, transit in second night.
+            x_hold_rise[0] = +21*60
+        elif all(conditions_FTRF):      # Two falls, one rise, transit in first night.
+            x_hold_rise.append(+21*60)
         else:
             pass
-
-        if len(x_hold_rise) > len(x_hold_fall):
-            TNight = abs(x_hold_rise[1] - x_hold_fall[0])
-        elif len(x_hold_rise) < len(x_hold_fall):
-            TNight = abs(x_hold_rise[0] - x_hold_fall[1])  
-        else:
-            TNight = abs(x_hold_rise[0] - x_hold_fall[0])  # Night length
         
-        NGen4 = [len(x_hold_fall) > len(x_hold_rise), dif_T0 > 0]
-        NGen6 = [len(x_hold_fall) < len(x_hold_rise), dif_T0 > 0]
-        NGen5 =  len(x_hold_fall) < len(x_hold_rise)
+        # Recompute
+        nfalls, nrises = len(x_hold_fall), len(x_hold_rise)
 
-        if all(NGen4):              # Two falls, one rise, transit during second night.
+        if nrises > nfalls:
+            night_length_mins = abs(x_hold_rise[1] - x_hold_fall[0])
+        elif nfalls > nrises:
+            night_length_mins = abs(x_hold_rise[0] - x_hold_fall[0])  
+        elif nfalls == nrises:  # Normal 
+            night_length_mins = abs(x_hold_rise[0] - x_hold_fall[0])
+
+
+        # |--- (Fall) ------ (Rise) ---day--- (Fall) ---(Transit)---|
+        conditions_FRFT = [nfalls > nrises, T0_after_UTC_midnight]
+        # |--- (Rise) ---day--- (Fall) ---(Transit)--- (Rise) ---|
+        conditions_RFTR = [nrises > nfalls, T0_after_UTC_midnight]
+        # |---(Transit)--- (Rise) ---day--- (Fall) ------ (Rise) ---|
+        conditions_TRFR = [nrises > nfalls, T0_before_UTC_midnight]
+
+        if all(conditions_FRFT):              # Two falls, one rise, transit in second night.
             x_hold_fall[0] = x_hold_fall[1]
-            x_hold_rise[0] = x_hold_fall[1] + TNight
-        elif all(NGen6):            # Exception for one fall, two rises, transit in second night.
+            x_hold_rise[0] = x_hold_fall[1] + night_length_mins
+        elif all(conditions_RFTR):            # One fall, two rises, transit in second night.
             x_hold_rise[0] = x_hold_rise[1]    
-        elif NGen5 == True:         # Exception for one fall, two rises, transit in first night.
-            FallOne = x_hold_rise[0] - TNight
-            x_hold_fall.insert(0, FallOne)
+        elif all(conditions_TRFR):            # One fall, two rises, transit in first night.
+            sunfall_one = x_hold_rise[0] - night_length_mins
+            x_hold_fall.insert(0, sunfall_one)
         else:
             pass
 
-        TNight0 = x_hold_rise[0] - TNight/2 # Night midpoint
+        night_midpoint = x_hold_rise[0] - night_length_mins/2 # Night midpoint
+        sunfall_min, sunrise_min = x_hold_fall[0], x_hold_rise[0]
 
 
         ### HEIGHT AND NIGHT SPOT CHECKS
         sampling_interval_min = 1
+        T14_min = T14 * 60 * 24
 
         # Transit timespace check
-        TDur = np.arange(0, (T14*1440) + 120, sampling_interval_min) * u.min    # Generates transit time-space
-        Ttimes = Time(row['Baseline_Start']) + TDur              # Date and Time where transit occurs
-        Ttimes_num = Ttimes.mjd
-        Ttimes_mask = (times_num >= Ttimes_num[0]) & (times_num <= Ttimes_num[-1])
-        SC = Targetaltazs[Ttimes_mask]                           # AltAz pairs during transit created
+        transit_dur = np.arange(0, T14_min + 120, sampling_interval_min) * u.min    # Generates transit time-space
+        transit_times = Time(row['Baseline_Start']) + transit_dur                   # Date and Time where transit occurs
+        transit_times_num = transit_times.mjd
+        transit_times_mask = (targ_times_num >= transit_times_num[0]) & (targ_times_num <= transit_times_num[-1])
+        targ_altazs_T = targ_altazs[transit_times_mask]   # AltAz pairs during transit created
         
         # Night timespace check
-        Nt = np.arange(x_hold_fall[0], x_hold_rise[0], sampling_interval_min) * u.min     # Generates night time-space
-        Ntimes = midnight + Nt                                   # Date and Time where relevant night occurs
-        Ntimes_num = Ntimes.mjd
-        Ntimes_mask = (times_num >= Ntimes_num[0]) & (times_num <= Ntimes_num[-1])
-        NC = Targetaltazs[Ntimes_mask]                           # AltAz pairs during relevant night created
+        night_dur = np.arange(sunfall_min, sunrise_min, sampling_interval_min) * u.min    # Generates night time-space
+        night_times = midnight + night_dur                                   # Date and Time where relevant night occurs
+        night_times_num = night_times.mjd
+        night_times_mask = (targ_times_num >= night_times_num[0]) & (targ_times_num <= night_times_num[-1])
+        targ_altazs_N = targ_altazs[night_times_mask]     # AltAz pairs during relevant night created
 
-        HSC = np.any(SC.alt.value >= PT8) or np.any(NC.alt.value >= PT8)   # Is the target at observable height anywhere in the run?        
-        HFC = np.all(SC.alt.value >= PT8)  # Is the target at observable height throughout the run?
-        NSC = np.any(NC.alt.value >= PT8)  # Is the target at observable height at some point in the night?
+        # Transit-Night overlap (TNO) timespace check
+        TNO_times_mask = (transit_times_mask & night_times_mask)
+        targ_altazs_TNO = targ_altazs[TNO_times_mask]
 
-        # Transit-night overlap timespace check
-        ingress_sunfall = [dif_T1, x_hold_fall[0]/60]
-        egress_sunrise = [dif_T4, x_hold_rise[0]/60]   
-        transit_night_overlap = midnight + np.arange(max(ingress_sunfall), min(egress_sunrise), sampling_interval_min/60) * u.hr
-        # Sometimes, the transit happens just at day and transit_night_overlap doesn't exist.
-        if transit_night_overlap.size > 0:
-            TNO_num = transit_night_overlap.mjd
-            TNO_mask = (times_num >= TNO_num[0]) & (times_num <= TNO_num[-1])
-            KC = Targetaltazs[TNO_mask]        # AltAz pairs during relevant transit-night overlap
-            KSC = np.any(KC.alt.value >= PT8)  # Is the target observable at height, at night? (K2-99 exception.)
-        else:
-            KSC = False
+        # Is the target at observable height anywhere in the run?
+        target_reaches_min_alt = np.any(targ_altazs_T.alt.value >= minAlt) or np.any(targ_altazs_N.alt.value >= minAlt)
+        # Is the target at observable height throughout transit+baseline?      
+        target_above_min_alt_entire_transit = np.all(targ_altazs_T.alt.value >= minAlt) 
+        # Is the target at observable height at some point in the night?
+        target_reaches_min_alt_at_night  = np.any(targ_altazs_N.alt.value >= minAlt)
+        # Is the target observable at height, at night?
+        target_reaches_min_alt_during_transit_at_night = np.any(targ_altazs_TNO.alt.value >= minAlt)
 
-        # IMPLEMENT CONDITIONS 1-3        
+
+        # IMPLEMENT INTERNAL_RANKS   
         # Bank of generator expressions (S denotes "strict", for which target must always be sufficiently high)
-        C1Gen = [abs(dif_T0*60 - TNight0) <= (T14*1440 + TNight)/2, HSC, KSC]
-        C1GenS = [abs(dif_T0*60 - TNight0) <= (T14*1440 + TNight)/2, HFC, NSC]
-        C2Gen = [T14*1440 + 2*abs(dif_T0*60 - TNight0) <= TNight, HSC, KSC]
-        C2GenS = [T14*1440 + 2*abs(dif_T0*60 - TNight0) <= TNight, HFC, NSC]
-        C3Gen = [(TNight - T14*1440)/2 - abs(dif_T0*60 - TNight0) >= 60, HSC, KSC]
-        C3GenS = [(TNight - T14*1440)/2 - abs(dif_T0*60 - TNight0) >= 60, HFC, NSC]
+        strict_altitude_conditions = [target_above_min_alt_entire_transit, target_reaches_min_alt_at_night]
+        lax_altitude_conditions = [target_reaches_min_alt, target_reaches_min_alt_during_transit_at_night]
+
+        transit_midnight_distance = abs(dif_T0*60 - night_midpoint)
+        sufficient_baseline_margin = ( (night_length_mins - T14_min)/2 - transit_midnight_distance >= 60 )
+        sufficient_transit_margin = ( (night_length_mins - T14_min)/2 - transit_midnight_distance >= 0 )
+        transit_at_night_exists = ( transit_midnight_distance <= (T14_min + night_length_mins)/2 )
+
+        cond_03_F = [sufficient_baseline_margin, *strict_altitude_conditions]
+        cond_03_P = [sufficient_baseline_margin, *lax_altitude_conditions]
+
+        cond_02_F = [sufficient_transit_margin, *strict_altitude_conditions]
+        cond_02_P = [sufficient_transit_margin, *lax_altitude_conditions]
+
+        cond_01_F = [transit_at_night_exists, *strict_altitude_conditions]
+        cond_01_P = [transit_at_night_exists, *lax_altitude_conditions]
 
         # Assigns internal rank. If one condition is untrue, an all statement will return 'False'.
         # Events which fail an all statement are passed down to the next statement until 'True' is returned and they stop.
-        if all(C3GenS):
+        if all(cond_03_F):
             Internal_Rank = '03_F'
-        elif all(C3Gen):
+        elif all(cond_03_P):
             Internal_Rank = '03_P'
-        elif all(C2GenS):
+        elif all(cond_02_F):
             Internal_Rank = '02_F'
-        elif all(C2Gen):
+        elif all(cond_02_P):
             Internal_Rank = '02_P'
-        elif all(C1GenS):
+        elif all(cond_01_F):
             Internal_Rank = '01_F'
-        elif all(C1Gen):
+        elif all(cond_01_P):
             Internal_Rank = '01_P'
         else:
             Internal_Rank = 'X'   
 
-        # Choose integral limits L1, L2 and return key times.
+
+        # BELOW IS CURRENTLY UN-REFACTORED
+        # Choose airmass integral limits L1, L2 and return key times.
         # We have one integration to do, for transit + baselines for air mass marker.
         
         # If the target is always above 30 degrees, there are no crossing points to worry about!
@@ -455,19 +504,19 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
                     pass
 
             except NameError:
-                sys.exit(f"[MP_Process] {Name} ({PlanetName}) has thrown an exception for a full event at {T1} - look at me!")
+                sys.exit(f"[MP_Process] {csv_name} ({planet_name}) has thrown an exception for a full event at {T1} - look at me!")
                 
         # If there are crossing points, passed to bank of generator expressions.
         # any() will stop iterating as soon as it returns a "True" case.
         # For lower integral limit:
         elif 'P' in Internal_Rank:
             try:     
-                PGen = [SC.alt.value[0] < PT8, SC.alt.value[-1] < PT8]
+                PGen = [SC.alt.value[0] < minAlt, SC.alt.value[-1] < minAlt]
                 if any(PGen):
-                    PT8CC = SC.alt.value - PT8
+                    PT8CC = SC.alt.value - minAlt
                     for i in np.arange(len(PT8CC) - 1):
                         if PT8CC[i] == 0 or PT8CC[i] * PT8CC[i+1] < 0:
-                            LT1 = TDur.to('hr').value[i] - 1    # relative to start of transit
+                            LT1 = transit_dur.to('hr').value[i] - 1    # relative to start of transit
                             LTC1 = dif_T1 + LT1                 # convert to be relative to midnight.
 
                             Cross_hold.append(LTC1)
@@ -480,15 +529,15 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
 
                 # One crossing point, calculate observing limits:
                 elif len(Cross_hold) == 1:
-                    PGen2 = [dif_BS < x_hold_fall[0]/60, SC.alt.value[-1] < PT8]
+                    PGen2 = [dif_BS < x_hold_fall[0]/60, SC.alt.value[-1] < minAlt]
 
                     # For transits that are too long on fall side for one night.
                     PGen12 = [dif_T1 < x_hold_fall[0]/60 < LTC1 < dif_T4 < x_hold_rise[0]/60,
-                              SC.alt.value[-1] < PT8]
+                              SC.alt.value[-1] < minAlt]
 
                     # This condition is for transits that are too long for 1 night!
                     PGen15 = [dif_T1 < x_hold_fall[0]/60 < LTC1 < x_hold_rise[0]/60 < dif_T4,
-                              SC.alt.value[-1] < PT8]
+                              SC.alt.value[-1] < minAlt]
  
                     PGen3 = [all(PGen2), all(PGen12), all(PGen15),
                              x_hold_fall[0]/60 > LTC1]
@@ -501,10 +550,10 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
                     
                     PGen6 = [x_hold_fall[0]/60 < LTC1 < dif_BE,
                              x_hold_rise[0]/60 > dif_BS,
-                             SC.alt.value[-1] > PT8]
+                             SC.alt.value[-1] > minAlt]
                     
                     PGen7 = [dif_BS < x_hold_fall[0]/60 < LTC1 < dif_BE,
-                             SC.alt.value[-1] > PT8]
+                             SC.alt.value[-1] > minAlt]
                     
                     PGen14= [all(PGen4), all(PGen6), all(PGen7)]
 
@@ -518,18 +567,18 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
                     elif any(PGen5):
                         L1 = dif_BS   
                     else:
-                        sys.exit(f'[MP_Process] Bad lower integration limit for {Name} ({PlanetName}) transting at {T1} - flag me!')
+                        sys.exit(f'[MP_Process] Bad lower integration limit for {csv_name} ({planet_name}) transting at {T1} - flag me!')
                     
                     #############################################################################
     
                     PGen8 = [round(dif_BS, 6) <= round(LTC1, 6) < dif_BE < x_hold_rise[0]/60,
-                             SC.alt.value[-1] > PT8]    
+                             SC.alt.value[-1] > minAlt]    
                     PGen9 = [LTC1 < x_hold_rise[0]/60 < dif_BE,
                              LTC1 < dif_BE]   
                     PGen10= [round(dif_BS,6) <= round(LTC1, 6) < x_hold_rise[0]/60 < dif_BE,
-                             SC.alt.value[-1] > PT8]
+                             SC.alt.value[-1] > minAlt]
                     PGen13= [x_hold_fall[0]/60 < dif_T1 < LTC1 < x_hold_rise[0]/60 < dif_T4,
-                             SC.alt.value[-1] > PT8]  # For transits that are too long on rise side for one night.
+                             SC.alt.value[-1] > minAlt]  # For transits that are too long on rise side for one night.
                     PGen11= [all(PGen10), all(PGen13),
                              LTC1 > x_hold_rise[0]/60]
     
@@ -540,7 +589,7 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
                     elif any(PGen9):
                         L2 = LTC1
                     else:
-                        sys.exit(f'[MP_Process] Bad upper integration limit for {Name} ({PlanetName}) transting at {T1} - flag me!')
+                        sys.exit(f'[MP_Process] Bad upper integration limit for {csv_name} ({planet_name}) transting at {T1} - flag me!')
 
                 # Get-out for super-marginal events (eg HAT-P-66).
                 if L2 < L1:
@@ -549,7 +598,7 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
                     pass
 
             except NameError:
-                sys.exit(f'[MP_Process] {Name} ({PlanetName}) has thrown an exception for a partial event at {T1} - look at me!')
+                sys.exit(f'[MP_Process] {csv_name} ({planet_name}) has thrown an exception for a partial event at {T1} - look at me!')
                 
         else:
             pass  # This will throw an UnboundLocalError if an event has been incorrectly flagged.     
@@ -590,16 +639,16 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
             # If it's a two-night event, a slightly extended integration base is needed. Try/except catches this.
             try:
                 with np.errstate(invalid='raise'):
-                    f3 = interp1d(delta_midnight,
-                                  abs(np.sin(np.deg2rad(Targetaltazs.alt.degree)))**(-0.6),
+                    f3 = interp1d(delta_midnight_targ,
+                                  abs(np.sin(np.deg2rad(targ_altazs.alt.degree)))**(-0.6),
                                   kind='cubic')
                     Sval, Serr = integrate.quad(f3, L1, L2, epsrel=1e-5)
                     Air_Mass_Marker = max(0, 3 * ((L2-L1) / Sval - 2/3)) # Returns an air mass weighting between 0 and 1, where 30 deg = 0.   
                      
             except ValueError:
-                ext_delta_midnight = np.linspace(-13, 19, t_samples) * u.hour
+                ext_delta_midnight = np.linspace(-13, 19, targ_samples) * u.hour
                 f3 = interp1d(ext_delta_midnight,
-                              abs(np.sin(np.deg2rad(Targetaltazs.alt.degree)))**(-0.6),
+                              abs(np.sin(np.deg2rad(targ_altazs.alt.degree)))**(-0.6),
                               kind='cubic')
                 try:
                     with np.errstate(invalid='raise'):
@@ -616,48 +665,33 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
                     WTrans = (L8-L7) / (dif_T3-dif_T2)                     # Full depth
                     WInOut = ((L10-L9) + (L6-L5)) / (2 * (dif_T2-dif_T1))  # Ingress-egress
 
-                    EventPercent = np.around(WBase * WTrans * WInOut, 10)
+                    event_weight = np.around(WBase * WTrans * WInOut, 10)
                    
             except FloatingPointError: # Case grazing transits -- No need to consider WTrans!
                 WBase = ((L4-L3) + (L12-L11)) / 2                  # Baseline
                 WTrans = np.nan                                    # Full depth (never achieved for grazing events!)
                 WInOut = ((L10-L9) + (L6-L5)) / (2 * (dif_T2-dif_T1))  # Ingress-egress
 
-                EventPercent = np.around(WBase * WInOut, 10)
+                event_weight = np.around(WBase * WInOut, 10)
 
             except ZeroDivisionError:   
-                sys.exit(f'[MP_Process] ZeroDivisionError for {Name} ({PlanetName}) transiting at {T1} - flag me!')
+                sys.exit(f'[MP_Process] ZeroDivisionError for {csv_name} ({planet_name}) transiting at {T1} - flag me!')
 
+        
+            # ABOVE CODE IS CURRENTLY UN-REFACTORED
             # Acquire moon noise metric
-            if Moon_Noise == 'Y_Moon':
-                LUT_times = pd.to_datetime(moonlightParams_LUT['time_UTC'])
+            if toggle_moonlight_noise == True:
+                LUT_times = pd.to_datetime(moon_LUT['obstime'])
                 ObsStart_JD_dt = ObsStart_JD.to_datetime()
                 idx_ObsStart = (LUT_times - ObsStart_JD_dt).abs().idxmin() 
 
-                moon_mag = moonlightParams_LUT[f'{Filter}mag'].iloc[idx_ObsStart]
-                Scattering_AOD_AERONET = moonlightParams_LUT[f'AOD_Scattering_{Filter}band'].iloc[idx_ObsStart]
-                Extinction_AOD_AERONET = moonlightParams_LUT[f'AOD_Extinction_{Filter}band'].iloc[idx_ObsStart]
+                moon_mag = moon_LUT[f'{filter_name}mag'].iloc[idx_ObsStart]
 
-                if Scattering_AOD == 'Default':
-                    AOD_scatter = Scattering_AOD_AERONET
-                else:
-                    AOD_scatter = Scattering_AOD
-
-                if Absorption_AOD == 'Default':
-                    AOD_absorption = Extinction_AOD_AERONET - Scattering_AOD_AERONET
-                else:
-                    AOD_absorption = Absorption_AOD
-
-                if Asymmetry_Factor == 'Default':
-                    AsymmFactor = moonlightParams_LUT[f'Asymmetry_Factor_{Filter}band'].iloc[idx_ObsStart]
-                else:
-                    AsymmFactor = Asymmetry_Factor
-            
-                Moon_Noise_Metric = MoonNoiseMetric(moonaltazs, Targetaltazs,
-                                                    moon_mag, AOD_scatter, AOD_absorption, AsymmFactor,
-                                                    dif_BS, delta_midnight, dif_BE, Filter)    
-            elif Moon_Noise == 'N_Moon':
-                Moon_Noise_Metric = 1  # SNR doesnt change if no noise source added
+                moon_noise_metric = MoonNoiseMetric(moon_altazs, targ_altazs,
+                                                    moon_mag, scattering_aod, absorption_aod, asymmetry_factor,
+                                                    dif_BS, delta_midnight_targ, dif_BE, filter_name)    
+            elif toggle_moonlight_noise == False:
+                moon_noise_metric = 1  # SNR doesnt change if no noise source added
 
         else:
             ObsStart_JD = np.nan
@@ -666,12 +700,12 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
             WBase = 0
             WTrans = 0
             WInOut = 0
-            EventPercent = 0
-            Moon_Noise_Metric = 0 # No need to calculate as it is not used
+            event_weight = 0
+            moon_noise_metric = 0 # No need to calculate as it is not used
         
 
-        # Create plot only if EventPercent >= minThreshold to reduce unnneccessary images and CPU load
-        if EventPercent >= EventPercent_minThreshold:
+        # Create plot only if event_weight >= event_weight_graph_threshold to reduce unneccessary images and CPU load
+        if (toggle_graph_outputs == True) and (event_weight >= event_weight_graph_threshold):
             # Shift time axis from BJD to local time for that telescope (for graphing purposes)
             # First, find timedelta where midnight_UTC - midnight_BJD in hours
             midnight_UTC = BJD2UTC(midnight, LockOn)
@@ -682,9 +716,9 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
             offset = delta_h_UTC_BJD + utc_offset
 
             # Shift delta_midnight and Moon_step to local time since midnight: local = BJD + offset
-            delta_midnight_local = delta_midnight + offset * u.hour
-            Moon_step_local = Moon_step + offset * u.hour
-            xlim = (delta_midnight_local.min().value, delta_midnight_local.max().value)
+            delta_midnight_targ_local = delta_midnight_targ + (offset * u.hour)
+            delta_midnight_sep_local = delta_midnight_sep + (offset * u.hour)
+            xlim = (delta_midnight_targ_local.min().value, delta_midnight_targ_local.max().value)
 
             # Define custom colormap
             colors = ['blue', 'aqua']
@@ -692,8 +726,8 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
             norm = Normalize(vmin=0, vmax=360)
 
             # Altitude mask to only plot whatever is in plot
-            moonaltmask = (moonaltazs.alt.value >= -1)
-            targaltmask = (Targetaltazs.alt.value >= -1)
+            moonaltmask = (moon_altazs.alt.value >= -1)
+            targaltmask = (targ_altazs.alt.value >= -1)
 
             # Plot target path and transit viability for all events.
             # Scatter c argument denotes colour, lw=linewidth, default s=20, zorder stops fill from mucking up the colour of your other lines.
@@ -701,22 +735,22 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
             plt.ioff()
             fig, ax = plt.subplots(figsize=(18, 10))
 
-            ax.plot(delta_midnight_local[moonaltmask], moonaltazs.alt[moonaltmask], markevery=20,
+            ax.plot(delta_midnight_targ_local[moonaltmask], moon_altazs.alt[moonaltmask], markevery=20,
                     color='darkorange', zorder=2, linestyle='-.', linewidth=2.5,
                     label='Lunar Path')                        # Moon path
-            sc = ax.scatter(delta_midnight_local[targaltmask], Targetaltazs.alt[targaltmask], c=Targetaltazs.az.value[targaltmask], 
+            sc = ax.scatter(delta_midnight_targ_local[targaltmask], targ_altazs.alt[targaltmask], c=targ_altazs.az.value[targaltmask], 
                             cmap=cmap, norm=norm, zorder=3, lw=0, s=15)   # Target path
             ax.plot([], [], color='blue', label='Target Path') # Dummy plot to put on legend
-            ax.scatter(Moon_step_local, Targetsepaltazs.alt,
+            ax.scatter(delta_midnight_sep_local, targsep_altazs.alt,
                        facecolors='white', edgecolors='blue', zorder=4, s=100, linewidths=2, marker='o',
-                       label='Lunar Separation (deg)')      # Separation scatterplot
+                       label='Lunar Separation (deg)')         # Separation scatterplot
             
             # Attaches separations to markers along target path.
-            for w, txt in enumerate(FormSep):
-                ax.annotate(FormSep[w], (Moon_step_local.value[w], Targetsepaltazs.alt.value[w]),
+            for w, txt in enumerate(seps_int):
+                ax.annotate(seps_int[w], (delta_midnight_sep_local.value[w], targsep_altazs.alt.value[w]),
                             color='violet', xytext=(-7.5, -27), textcoords='offset pixels')
                 
-            ax.fill_between(delta_midnight_local.to('hr').value, 0, 90, sunaltazs.alt <= -18*u.deg,
+            ax.fill_between(delta_midnight_targ_local.to('hr').value, 0, 90, (sun_altazs.alt <= nightAlt*u.deg),
                             facecolor='black', alpha=0.95, zorder=0, label='Night')   # Bounded by astronomical twilight
             
             # Red fill denotes transit in progress, superimposed on other zones. alpha denotes transparency.
@@ -725,16 +759,16 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
             ax.axvspan(dif_T1+offset, dif_T4+offset, 0,90, alpha=0.3, facecolor='r', edgecolor='r', hatch='X', zorder=1,
                        label='Transit Active')
             
-            ax.axhspan(0, PT8, xlim[0], xlim[1], facecolor='grey', alpha=0.2, zorder=5,
+            ax.axhspan(0, minAlt, xlim[0], xlim[1], facecolor='grey', alpha=0.2, zorder=5,
                        label='Unobservable altitude')
-            ax.axhspan(LIV,90, xlim[0], xlim[1], facecolor='grey', alpha=0.2, zorder=5)
+            ax.axhspan(maxAlt ,90, xlim[0], xlim[1], facecolor='grey', alpha=0.2, zorder=5)
 
             fig.colorbar(sc, ax=ax).set_label('Azimuth [deg]')
             ax.legend(loc='upper right')
 
             textpos = xlim[1] + 5
-            ax.text(textpos, 85, f'Moon Illumination:\n{Phase:.0f}%')
-            ax.text(textpos, 75, f'Closest Lunar\nSeparation: {min(FormSep):.0f} deg')
+            ax.text(textpos, 85, f'Moon Illumination:\n{phase:.0f}%')
+            ax.text(textpos, 75, f'Closest Lunar\nSeparation: {min(seps_int):.0f} deg')
 
             # Custom xtick formatting
             ax.set_xlim(xlim)
@@ -757,70 +791,69 @@ def P2Predictor(csvcorepath, csvinpath, csvoutpath,
             ax.set_xlabel(f'Local time in hours (UTC+{utc_offset:.1f})')
             ax.set_ylabel('Altitude [deg]')
 
-            ax.set_title(f'{PlanetName} Transit Observability for {Inst} from\n' +\
+            ax.set_title(f'{planet_name} Transit Observability for {instrument} from\n' +\
                          f'{(ObsStart_JD + dt.timedelta(hours=utc_offset)).strftime("%b %d %Y %H:%M")} to ' +\
                          f'{(ObsEnd_JD + dt.timedelta(hours=utc_offset)).strftime("%b %d %Y %H:%M")} (UTC+{utc_offset:.1f})')
 
-            fig.savefig(rf'{PlotPath}/{EventPercent:.3f}_{Internal_Rank}_{Name}_{Inst}_{T1.strftime("%b_%d_%Y_%H_%M_%S")}.jpg',
+
+            fig.savefig(graph_folder_path / f'{event_weight:.3f}_{Internal_Rank}_{planet_name}_{instrument}_{T1.strftime("%b-%d-%Y-%H-%M-%S")}.jpg',
                         dpi=100, transparent=False, facecolor='white', edgecolor='black', format='jpg')
 
             plt.close(fig)  # This is still needed to release system resources after plot is saved. Must be explicit!
         
-        return Phase, min(Sep), Internal_Rank, ObsStart_JD, ObsEnd_JD, Air_Mass_Marker, WBase, WTrans, WInOut, EventPercent, Moon_Noise_Metric
+        return phase, min(seps), Internal_Rank, ObsStart_JD, ObsEnd_JD, Air_Mass_Marker, WBase, WTrans, WInOut, event_weight, moon_noise_metric
         # Note the conversion to UTC for our observing start/end times!
     
+
     def FinalMetric(row):
-        FinMet = di[Metric_Mode][0] * row['Air_Mass_Metric'] * row['Event_Weight'] * row['Moon_Noise_Metric']
-        return FinMet
+        final_metric = df[metric_mode][0] * row['Air_Mass_Metric'] * row['Event_Weight'] * row['Moon_Noise_Metric']
+        return final_metric
 
 
-    ##### DEFINITIONS END HERE #####
-    # Graphs will live here.
-    PlotPath = rf'{csvoutpath}/{Inst}_{Filter}-band_{ObsStart.strftime("%b %d %Y")}_to_{ObsEnd.strftime("%b %d %Y")}'
-    
+    ##### DEFINITIONS END HERE #####  
     # csv file containing one planet.
-    Cols=['Planet', 'R*', 'Rp', 'RA:HH', 'RA:MM', 'RA:SS', 'Dec:DD', 'Dec:MM', 'Dec:SS', f'{Filter}mag',
-          'T14', 'Depth', 'T0 (HJD or BJD)', 'T0_err', 'P (day)', 'P_err',
-          'Impact Parameter', 'a_Calc', 'Previous Study Flag',
-          'Rank', 'Habitable_Rank', 'Multi_Transit_Rank', 'Multi_Transit_Habitable_Rank']
-    di = pd.read_csv(csvinpath, usecols=Cols, skipinitialspace=True)
+    df_cols = ['Planet', 'R*', 'Rp', 'RA:HH', 'RA:MM', 'RA:SS', 'Dec:DD', 'Dec:MM', 'Dec:SS', f'{filter_name}mag',
+        'T14', 'Depth', 'T0 (HJD or BJD)', 'T0_err', 'P (day)', 'P_err',
+        'Impact Parameter', 'a_Calc', 'Previous Study Flag',
+        'TSM', 'Rank', 'Habitable_Rank', 'Multi_Transit_Rank', 'Multi_Transit_Habitable_Rank']
+    df = pd.read_csv(csv_initiated, usecols=df_cols, skipinitialspace=True)
 
     # Altitude spot-check - will the target ever be high enough to be observed?
-    di[['RA:HMS', 'Dec:Deg']] = di.apply(lambda row: AltChecker(row), axis=1, result_type='expand')
-    PlanetName = di['Planet'][0]
+    df[['RA:HMS', 'Dec:Deg']] = df.apply(lambda row: AltChecker(row), axis=1, result_type='expand')
+    planet_name = df['Planet'][0]
     
-    if PT8 >= 90 - abs(ds['Lat'].iloc[S] - di['Dec:Deg'][0]):  # Case physically unobservable target
+    if minAlt >= 90 - abs(scope_df['Lat'].iloc[scope_idx] - df['Dec:Deg'][0]):  # Case physically unobservable target
         pass
     else:
-        # Create TargetTimes and ErrTimes list
-        T1Calc(di.iloc[0])  # There is only one row anyways
+        # Fill in transit_start_times and transit_start_times_err lists
+        T1_Calc(df.iloc[0])   # There is only one row anyways
 
-        if len(TargetTimes) == 0:  # Case no transits in observation window:           
+        if len(transit_start_times) == 0:  # Case no transits in observation window:           
             pass
 
         else:
             # Create T1 and T1_err columns according to Figure 3.6
             # Reindex original di to create all these NaN rows
-            di = di.reindex(np.arange(len(TargetTimes)))
+            df = df.reindex(np.arange(len(transit_start_times)))
             # Concatenate T1 and T1_err
-            di = pd.concat([di,
-                            pd.DataFrame({'T1': TargetTimes, 'T1_err': ErrTimes})],
+            df = pd.concat([df,
+                            pd.DataFrame({'T1': transit_start_times, 'T1_err': transit_start_times_err})],
                             axis=1)
                             
             # Writes additional key times and results
-            di[['T2', 'T0', 'T3', 'T4', 'Baseline_Start', 'Baseline_End']] = di.apply(lambda row: TimesCalc(row),
+            df[['T2', 'T0', 'T3', 'T4', 'Baseline_Start', 'Baseline_End']] = df.apply(lambda row: Times_Calc(row),
                                                                                       axis=1, result_type='expand')
-            di[['Lunar_Illumination', 'Closest_Lunar_Approach', 'Internal Rank', 'Observation_Start_(UTC)', 'Observation_End_(UTC)',
+            df[['Lunar_Illumination', 'Closest_Lunar_Approach', 'Internal Rank', 'Observation_Start_(UTC)', 'Observation_End_(UTC)',
                 'Air_Mass_Metric', 'Baseline_Weight', 'Transit_Curve_Weight', 'Ingress-Egress_Weight', 'Event_Weight',
-                'Moon_Noise_Metric']] = di.apply(lambda row: EventMetric(row),
+                'Moon_Noise_Metric']] = df.apply(lambda row: EventMetric(row),
                                                  axis=1, result_type='expand')  
             
             # Final metrics, then export
-            di[f'Final_{Metric_Mode}'] = di.apply(lambda row: FinalMetric(row), axis=1)
-            di = di.drop(columns=f'{Filter}mag')
+            df[f'Final_{metric_mode}'] = df.apply(lambda row: FinalMetric(row), axis=1)
+            df = df.drop(columns=f'{filter_name}mag')
 
-            di.to_csv(rf'{csvoutpath}/{Name}', index=False)
+            df.to_csv(output_folder / 'phase_2' / 'individual_planets'/ csv_name, index=False)
     
     # CLEARANCE PROTOCOLS FOR MULTIPLE-TARGET RUNNING   
-    TargetTimes.clear()
-    ErrTimes.clear()
+    transit_start_times.clear()
+    transit_start_times_err.clear()

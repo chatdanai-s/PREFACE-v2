@@ -98,22 +98,22 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
             sys.exit('[InputCheck] Invalid input(s) found -- PREFACE terminated.')
 
 
-    # # Run pipeline (Phase 1)
-    # print('\nRunning Phase One of PREFACE...\n')
+    # Run pipeline (Phase 1)
+    print('\nRunning Phase One of PREFACE...\n')
 
-    # P1_ModCheck.Check(CSV_core_folder)
-    # P1_ImpactMerger.ExoOrgImpacts(CSV_core_folder)
-    # P1_ExoplanetseuImpactMerger.ExoeuImpacts(CSV_core_folder)
-    # P1_WorkingTEPSetBuilder.WorkBuilder(CSV_core_folder)
+    P1_ModCheck.Check(CSV_core_folder)
+    P1_ImpactMerger.ExoOrgImpacts(CSV_core_folder)
+    P1_ExoplanetseuImpactMerger.ExoeuImpacts(CSV_core_folder)
+    P1_WorkingTEPSetBuilder.WorkBuilder(CSV_core_folder)
 
-    # P1_RankMaker.RankMaker(CSV_core_folder, CSV_intermediate_folder,
-    #                        scope_df, scope_idx, *TelescopeConfigurations.unpack)
+    P1_RankMaker.RankMaker(CSV_core_folder, CSV_intermediate_folder,
+                           scope_df, scope_idx, *TelescopeConfigurations.unpack)
 
-    # RMin = P1_Cutter.RankMaker(CSV_core_folder, CSV_intermediate_folder,
-    #                            scope_df, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut)
+    RMin = P1_Cutter.RankMaker(CSV_core_folder, CSV_intermediate_folder,
+                               scope_df, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut)
     
-    # P1_ViabilitySplitter.Splitter(CSV_core_folder, CSV_intermediate_folder, output_folder,
-    #                               *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut, RMin)
+    P1_ViabilitySplitter.Splitter(CSV_core_folder, CSV_intermediate_folder, output_folder,
+                                  *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut, RMin)
 
 
     # Run pipeline (Phase 2)

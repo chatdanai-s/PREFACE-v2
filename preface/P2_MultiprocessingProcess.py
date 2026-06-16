@@ -63,10 +63,10 @@ def P2Predictor(
 
     # Lookup table for moon noise calculations
     if toggle_moonlight_noise == True:
-        moon_LUT = pd.read_csv(LUT_FILEPATH_MOON)
+        moon_LUT = pd.read_parquet(LUT_FILEPATH_MOON, engine="pyarrow")
 
     # Lookup table for sun/moon AltAz skycoords
-    altaz_LUT = pd.read_csv(LUT_FILEPATH_ALTAZS)
+    altaz_LUT = pd.read_parquet(LUT_FILEPATH_ALTAZS, engine="pyarrow")
 
     obstime_LUT = Time(
         altaz_LUT["obstime"].to_numpy(dtype=str),

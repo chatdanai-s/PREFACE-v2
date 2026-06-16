@@ -8,19 +8,48 @@ version = "2.0.0"
 description = "An Automated Pipeline for the Selection of Transmission Spectroscopy Candidates"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
-keywords = ["placeholder"]
+license = "MIT"
+
+keywords = [
+  "astronomy",
+  "exoplanets",
+  "transmission-spectroscopy",
+  "observation-planning",
+  "target-selection",
+  "astrophysics",
+  "pipeline"
+]
+
 classifiers = [
   "Programming Language :: Python :: 3",
-  "Operating System :: OS Independent"
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
+
 authors = [
-  { name = "placeholder", email = "placeholder" }
+  { name = "Author 1", email = "author1@example.com" },
+  { name = "Author 2", email = "author2@example.com" },
+  { name = "Chatdanai Sawangwong", email = "chatdanai.saw@gmail.com" },
+  { name = "Author 4", email = "author4@example.com" },
+  { name = "Author 5", email = "author5@example.com" },
+  { name = "Author 6", email = "author6@example.com" },
+  { name = "Author 7", email = "author7@example.com" }
 ]
 
 dependencies = [
+  "numpy>=2.1.0",
+  "pandas>=3.0.3",
+  "matplotlib>=3.9.2",
+  "astropy>=7.2.0",
+  "scipy>=1.14.1",
+  "python-dateutil>=2.9.0",
+  "joblib>=1.5.3",
+  "tqdm>=4.67.0",
+  "ephem>=4.2.1",
+  "timezonefinder>=8.2.4",
+  "pyarrow>=24.0.0",
 ]
-# numpy, pandas, matplotlib, astropy, scipy, python-dateutil, joblib, tqdm, ephem, timezonefinder
 
 [project.urls]
 Homepage = "https://github.com/chatdanai-s/PREFACE"
@@ -32,4 +61,4 @@ BugTracker = "https://github.com/chatdanai-s/PREFACE/issues"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["preface*"]
-exclude = ["__pycache__", "tests"]
+exclude = ["tests"]

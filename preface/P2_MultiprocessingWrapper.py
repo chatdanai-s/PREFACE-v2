@@ -3,10 +3,7 @@
 from astropy.utils import data
 from astropy.utils.iers import IERS_A_URL_MIRROR
 import os
-import sys
 import time
-import glob
-import shutil
 import urllib.error
 import numpy as np
 import datetime as dt
@@ -18,8 +15,8 @@ from joblib import Parallel, delayed, parallel_config
 from tqdm import tqdm  # For multiprocessing progress
 
 # Other pipeline imports
-from . import P2_MultiprocessingProcess
-from .P1_ModCheck import creation_date
+from preface import P2_MultiprocessingProcess
+from preface.P1_ModCheck import creation_date
 
 # Timezone handling
 import astropy.units as u
@@ -158,7 +155,7 @@ def get_LocAndTimezoneStr(scope_df, scope_idx):
 def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime, obs_end: dt.datetime, Loc):
     LUT_FOLDER = CSV_intermediate_folder / "lut_altaz"
     LUT_FOLDER.mkdir(parents=True, exist_ok=True)
-    LUT_FILENAME = f'sun_moon_altazs_at_{instrument}_TDB{obs_start.strftime("%b-%d-%Y")}_to_TDB{obs_end.strftime("%b-%d-%Y")}.csv.gz'
+    LUT_FILENAME = f'sun_moon_altazs_at_{instrument}_TDB{obs_start.strftime("%b-%d-%Y")}_to_TDB{obs_end.strftime("%b-%d-%Y")}.parquet'
     LUT_FILEPATH_ALTAZS = LUT_FOLDER / LUT_FILENAME
 
     if not os.path.exists(LUT_FILEPATH_ALTAZS):
@@ -215,7 +212,7 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
         df_altazs.to_csv(
             LUT_FILEPATH_ALTAZS,
             index=False,
-            compression="gzip",
+            compression="snappy",
             float_format="%.3f",
         )
 
@@ -233,7 +230,7 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
 def make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise):
     LUT_FOLDER = CSV_intermediate_folder / "lut_moonmags"
     LUT_FOLDER.mkdir(parents=True, exist_ok=True)
-    LUT_FILENAME = f'lunar_TOA_Mags_at_{instrument}_UTC{obs_start.strftime("%b-%d-%Y")}_to_UTC{obs_end.strftime("%b-%d-%Y")}.csv.gz'
+    LUT_FILENAME = f'lunar_TOA_Mags_at_{instrument}_UTC{obs_start.strftime("%b-%d-%Y")}_to_UTC{obs_end.strftime("%b-%d-%Y")}.parquet'
     LUT_FILEPATH_MOON = LUT_FOLDER / LUT_FILENAME
 
     if toggle_moonlight_noise and not os.path.exists(LUT_FILEPATH_MOON):
@@ -278,7 +275,7 @@ def make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_star
 
 
         # Save to dataframe as lookup table, and we are done!
-        df_moon.to_csv(LUT_FILEPATH_MOON, index=False, compression="gzip", float_format="%.3f")
+        df_moon.to_csv(LUT_FILEPATH_MOON, index=False, compression="snappy", float_format="%.3f")
 
         time_taken = time.time()-start
         print(f'>> Moonlight mag. LUT exported to {LUT_FILEPATH_MOON} ({time_taken:.2f} s)')

@@ -11,7 +11,7 @@ import pandas as pd
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
-from .P1_ImpactMerger import BWriter
+from preface.P1_ImpactMerger import BWriter
 
 
 # With both phases fired, all outputs must be brought together.

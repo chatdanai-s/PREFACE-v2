@@ -39,7 +39,7 @@ from dateutil.relativedelta import relativedelta
 def P2Predictor(
     CSV_core_folder, csv_initiated, output_folder,
     obs_start, obs_end, scope_df, scope_idx,
-    instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut,
+    instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode,
     toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
     toggle_graph_outputs, event_weight_graph_threshold,
     Loc, timezone_str, graph_folder_path, LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
@@ -58,7 +58,7 @@ def P2Predictor(
     transit_start_times_err = []
     x_hold_fall = []
     x_hold_rise = []
-    Cross_hold = []
+    minAlt_cross_hold = []
 
 
     # Lookup table for moon noise calculations
@@ -68,7 +68,10 @@ def P2Predictor(
     # Lookup table for sun/moon AltAz skycoords
     altaz_LUT = pd.read_csv(LUT_FILEPATH_ALTAZS)
 
-    obstime_LUT = Time(altaz_LUT["obstime"])
+    obstime_LUT = Time(
+        altaz_LUT["obstime"].to_numpy(dtype=str),
+        format="iso"
+    )
     sunaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['sun_alt'], az=altaz_LUT['sun_az'], unit='deg',
                                 obstime=obstime_LUT, location=Loc, frame='altaz')
     moonaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['moon_alt'], az=altaz_LUT['moon_az'], unit='deg',
@@ -326,13 +329,16 @@ def P2Predictor(
         ### CLEARANCE PROTOCOLS FOR MULTIPLE-EVENT RUNNING
         x_hold_fall.clear()
         x_hold_rise.clear()
-        Cross_hold.clear()
+        minAlt_cross_hold.clear()
 
         # When will the transit, baseline and night begin and end -- relative to midnight? 
         # Finds differences either side of 00:00:00.
         # Note: Take only the value when plotting! You can't plot a unit.
+        DIF_PRECISION = 6
         def hours_relative_to_midnight(time):
-            return (Time(time) - midnight).to('hr').value
+            dif = (Time(time) - midnight).to('hr').value
+            dif = round(dif, DIF_PRECISION)
+            return dif
 
         dif_BS = hours_relative_to_midnight(row['Baseline_Start'])
         dif_T1 = hours_relative_to_midnight(T1)
@@ -346,11 +352,11 @@ def P2Predictor(
         # When does each event night start and end? 
         # Checks when sun path crosses twilight marker at y=-18, appends to x_hold_fall or _rise (depending on gradient).
         # x_holds_fall and _rise indicate delta_midnight in minutes where sunrise-sunfall crossover occurs
-        cross_check = sun_altazs.alt.value - nightAlt
-        cross_check_idxs = np.arange(len(cross_check) - 1)
+        nightAlt_cross_check = sun_altazs.alt.value - nightAlt
+        nightAlt_cross_check_idxs = np.arange(len(nightAlt_cross_check) - 1)
 
-        for i in cross_check_idxs:
-            if cross_check[i] * cross_check[i+1] <= 0:       # If the moment sun crosses over y=-18 at i to i+1
+        for i in nightAlt_cross_check_idxs:
+            if nightAlt_cross_check[i] * nightAlt_cross_check[i+1] <= 0:       # If the moment sun crosses over y=-18 at i to i+1
                 x_ = delta_midnight_targ.to('min').value[i]  # Time in delta_midnight_targ (minutes) where the crossing happens 
 
                 if sun_altazs.alt.value[i+1] < sun_altazs.alt.value[i]:      # If sunfall
@@ -412,8 +418,11 @@ def P2Predictor(
         else:
             pass
 
-        night_midpoint = x_hold_rise[0] - night_length_mins/2 # Night midpoint
+        night_midpoint = x_hold_rise[0] - night_length_mins/2      # Night midpoint
         sunfall_min, sunrise_min = x_hold_fall[0], x_hold_rise[0]
+        # Sunfall and sunrise time relative to midnight
+        dif_sunfall = round(sunfall_min/60, DIF_PRECISION)
+        dif_sunrise = round(sunrise_min/60, DIF_PRECISION)
 
 
         ### HEIGHT AND NIGHT SPOT CHECKS
@@ -485,7 +494,6 @@ def P2Predictor(
             Internal_Rank = 'X'   
 
 
-        # BELOW IS CURRENTLY UN-REFACTORED
         # Choose airmass integral limits L1, L2 and return key times.
         # We have one integration to do, for transit + baselines for air mass marker.
         
@@ -494,8 +502,8 @@ def P2Predictor(
             global L1, L2
             try:
                 # FOR TRANSIT + BASELINE
-                L1 = max(dif_BS, x_hold_fall[0]/60)
-                L2 = min(dif_BE, x_hold_rise[0]/60)
+                L1 = max(dif_BS, dif_sunfall)
+                L2 = min(dif_BE, dif_sunrise)
 
                 # Get-out for super-marginal events (eg HAT-P-66).
                 if L2 < L1:
@@ -506,182 +514,201 @@ def P2Predictor(
             except NameError:
                 sys.exit(f"[MP_Process] {csv_name} ({planet_name}) has thrown an exception for a full event at {T1} - look at me!")
                 
-        # If there are crossing points, passed to bank of generator expressions.
+        # If there are crossing points (lax altitude condition), passed to bank of generator expressions.
         # any() will stop iterating as soon as it returns a "True" case.
         # For lower integral limit:
         elif 'P' in Internal_Rank:
-            try:     
-                PGen = [SC.alt.value[0] < minAlt, SC.alt.value[-1] < minAlt]
-                if any(PGen):
-                    PT8CC = SC.alt.value - minAlt
-                    for i in np.arange(len(PT8CC) - 1):
-                        if PT8CC[i] == 0 or PT8CC[i] * PT8CC[i+1] < 0:
-                            LT1 = transit_dur.to('hr').value[i] - 1    # relative to start of transit
-                            LTC1 = dif_T1 + LT1                 # convert to be relative to midnight.
+            try:
+                targ_alt_T_start = targ_altazs_T.alt.value[0]
+                targ_alt_T_end = targ_altazs_T.alt.value[-1]
 
-                            Cross_hold.append(LTC1)
+                minAlt_crossing_exists = (targ_alt_T_start < minAlt) or (targ_alt_T_end < minAlt)
+                if minAlt_crossing_exists:
+                    minAlt_cross_check = targ_altazs_T.alt.value - minAlt
+                    minAlt_cross_check_idxs = np.arange(len(minAlt_cross_check) - 1)
+
+                    for i in minAlt_cross_check_idxs:
+                        if (minAlt_cross_check[i] == 0) or (minAlt_cross_check[i] * minAlt_cross_check[i+1] < 0):
+                            minAlt_cross_hr_relative_to_transit = transit_dur.to('hr').value[i] - 1   # relative to start of transit (-1 because transit_dur includes baseline)
+                            dif_minAlt_cross = dif_T1 + minAlt_cross_hr_relative_to_transit           # convert to be minAlt cross time relative to midnight
+
+                            dif_minAlt_cross = round(dif_minAlt_cross, DIF_PRECISION)
+                            minAlt_cross_hold.append(dif_minAlt_cross)
          
+
                 # For targets that are barely visible, we get two crossing points!
                 # These observing limits are easier to calculate.
-                if len(Cross_hold) == 2:
-                    L1 = max(Cross_hold[0], x_hold_fall[0] / 60)
-                    L2 = min(Cross_hold[1], x_hold_rise[0] / 60)
+                if len(minAlt_cross_hold) == 2:
+                    L1 = max(minAlt_cross_hold[0], dif_sunfall)
+                    L2 = min(minAlt_cross_hold[1], dif_sunrise)
+
 
                 # One crossing point, calculate observing limits:
-                elif len(Cross_hold) == 1:
-                    PGen2 = [dif_BS < x_hold_fall[0]/60, SC.alt.value[-1] < minAlt]
+                elif len(minAlt_cross_hold) == 1:
+                    # Stores every value to diagnose issue if integration limit determination goes wrong
+                    events = [
+                        ("dif_BS", dif_BS),
+                        ("dif_sunfall", dif_sunfall),
+                        ("dif_T1", dif_T1),
+                        ("dif_minAlt_cross", dif_minAlt_cross),
+                        ("dif_T4", dif_T4),
+                        ("dif_sunrise", dif_sunrise),
+                        ("dif_BE", dif_BE),
+                    ]
+                    events.sort(key=lambda x: x[1])
+                    debugString = (
+                        f"\n>> planet_name={planet_name}\n"
+                        + "\n".join(f">> {name}={value}" for name, value in events)
+                        + f"\n>> targ_alt_T_start={targ_alt_T_start}"
+                        + f"\n>> targ_alt_T_end={targ_alt_T_end}"
+                        + f"\n>> minAlt={minAlt}"
+                    )
+                    
+                    choose_L1_sunfall_1 = (dif_BS <= dif_sunfall) and (targ_alt_T_end < minAlt)
+                    choose_L1_sunfall_2 = (dif_T1 <= dif_sunfall <= dif_minAlt_cross <= dif_T4 <= dif_sunrise) and (targ_alt_T_end < minAlt)
+                    choose_L1_sunfall_3 = (dif_T1 <= dif_sunfall <= dif_minAlt_cross <= dif_sunrise <= dif_T4) and (targ_alt_T_end < minAlt)
+                    choose_L1_sunfall_4 = (dif_minAlt_cross <= dif_sunfall)
+                    choose_L1_sunfall = choose_L1_sunfall_1 or choose_L1_sunfall_2 or choose_L1_sunfall_3 or choose_L1_sunfall_4
+                    
+                    choose_L1_minAlt_cross_1 = (dif_sunfall <= dif_minAlt_cross <= dif_BE) and (dif_BS < dif_sunfall)
+                    choose_L1_minAlt_cross_2 = (dif_sunfall <= dif_minAlt_cross <= dif_BE) and (dif_BS < dif_sunrise) and (targ_alt_T_end > minAlt)
+                    choose_L1_minAlt_cross_3 = (dif_BS <= dif_sunfall <= dif_minAlt_cross <= dif_BE) and (targ_alt_T_end > minAlt)
+                    choose_L1_minAlt_cross = choose_L1_minAlt_cross_1 or choose_L1_minAlt_cross_2 or choose_L1_minAlt_cross_3                
 
-                    # For transits that are too long on fall side for one night.
-                    PGen12 = [dif_T1 < x_hold_fall[0]/60 < LTC1 < dif_T4 < x_hold_rise[0]/60,
-                              SC.alt.value[-1] < minAlt]
+                    choose_L1_baseline_start = (dif_BS <= dif_sunrise <= dif_minAlt_cross) or (dif_BS <= dif_minAlt_cross <= dif_sunrise)
 
-                    # This condition is for transits that are too long for 1 night!
-                    PGen15 = [dif_T1 < x_hold_fall[0]/60 < LTC1 < x_hold_rise[0]/60 < dif_T4,
-                              SC.alt.value[-1] < minAlt]
- 
-                    PGen3 = [all(PGen2), all(PGen12), all(PGen15),
-                             x_hold_fall[0]/60 > LTC1]
-                    
-                    PGen4 = [x_hold_fall[0]/60 < LTC1 < dif_BE,
-                             x_hold_fall[0]/60 > dif_BS]
-                    
-                    PGen5 = [dif_BS < x_hold_rise[0]/60 < LTC1,
-                             dif_BS < LTC1 < x_hold_rise[0]/60]
-                    
-                    PGen6 = [x_hold_fall[0]/60 < LTC1 < dif_BE,
-                             x_hold_rise[0]/60 > dif_BS,
-                             SC.alt.value[-1] > minAlt]
-                    
-                    PGen7 = [dif_BS < x_hold_fall[0]/60 < LTC1 < dif_BE,
-                             SC.alt.value[-1] > minAlt]
-                    
-                    PGen14= [all(PGen4), all(PGen6), all(PGen7)]
-
-                    # Now we get L1 and L2
-                    # any () & all() only accept one argument, so it is necessary to nest generator expressions.
-                    # Pass denotes that no action should be taken. != means 'is not equal to'.
-                    if any(PGen3):
-                        L1 = x_hold_fall[0]/60
-                    elif any(PGen14):
-                        L1 = LTC1
-                    elif any(PGen5):
+                    # Now we get L1
+                    if choose_L1_sunfall:
+                        L1 = dif_sunfall
+                    elif choose_L1_minAlt_cross:
+                        L1 = dif_minAlt_cross
+                    elif choose_L1_baseline_start:
                         L1 = dif_BS   
                     else:
-                        sys.exit(f'[MP_Process] Bad lower integration limit for {csv_name} ({planet_name}) transting at {T1} - flag me!')
+                        print(debugString)
+                        sys.exit(f'[P2_MultiprocessingProcess] Bad lower integration limit for {csv_name} ({planet_name}) transting at {T1} - flag me!')
                     
                     #############################################################################
     
-                    PGen8 = [round(dif_BS, 6) <= round(LTC1, 6) < dif_BE < x_hold_rise[0]/60,
-                             SC.alt.value[-1] > minAlt]    
-                    PGen9 = [LTC1 < x_hold_rise[0]/60 < dif_BE,
-                             LTC1 < dif_BE]   
-                    PGen10= [round(dif_BS,6) <= round(LTC1, 6) < x_hold_rise[0]/60 < dif_BE,
-                             SC.alt.value[-1] > minAlt]
-                    PGen13= [x_hold_fall[0]/60 < dif_T1 < LTC1 < x_hold_rise[0]/60 < dif_T4,
-                             SC.alt.value[-1] > minAlt]  # For transits that are too long on rise side for one night.
-                    PGen11= [all(PGen10), all(PGen13),
-                             LTC1 > x_hold_rise[0]/60]
-    
-                    if all(PGen8): 
-                        L2 = dif_BE 
-                    elif any(PGen11):
-                        L2 = x_hold_rise[0]/60.
-                    elif any(PGen9):
-                        L2 = LTC1
-                    else:
-                        sys.exit(f'[MP_Process] Bad upper integration limit for {csv_name} ({planet_name}) transting at {T1} - flag me!')
+                    choose_L2_baseline_end = (dif_BS <= dif_minAlt_cross <= dif_BE <= dif_sunrise) and (targ_alt_T_end > minAlt)
+                    
+                    choose_L2_minAlt_cross = (dif_minAlt_cross <= dif_sunrise <= dif_BE) or (dif_minAlt_cross < dif_BE)  
 
-                # Get-out for super-marginal events (eg HAT-P-66).
-                if L2 < L1:
+                    choose_L2_sunrise_1 = (dif_BS <= dif_minAlt_cross <= dif_sunrise <= dif_BE) and (targ_alt_T_end > minAlt)
+                    choose_L2_sunrise_2 = (dif_sunfall <= dif_T1 <= dif_minAlt_cross <= dif_sunrise <= dif_T4) and (targ_alt_T_end > minAlt)
+                    choose_L2_sunrise_3 = (dif_sunrise <= dif_minAlt_cross)
+                    choose_L2_sunrise = choose_L2_sunrise_1 or choose_L2_sunrise_2 or choose_L2_sunrise_3
+
+                    # Now we get L2
+                    if choose_L2_baseline_end: 
+                        L2 = dif_BE 
+                    elif choose_L2_sunrise:
+                        L2 = dif_sunrise
+                    elif choose_L2_minAlt_cross:
+                        L2 = dif_minAlt_cross
+                    else:
+                        print(debugString)
+                        sys.exit(f'[P2_MultiprocessingProcess] Bad upper integration limit for {csv_name} ({planet_name}) transting at {T1} - flag me!')
+
+                # Get-out or super-marginal events (eg HAT-P-66).
+                if L2 <= L1:
                     Internal_Rank = 'X'
                 else:
                     pass
 
             except NameError:
-                sys.exit(f'[MP_Process] {csv_name} ({planet_name}) has thrown an exception for a partial event at {T1} - look at me!')
+                sys.exit(f'\n[P2_MultiprocessingProcess] {csv_name} ({planet_name}) has thrown an exception for a partial event at {T1} - look at me!')
                 
         else:
             pass  # This will throw an UnboundLocalError if an event has been incorrectly flagged.     
        
+
         # Choose all segment limits for event visibility metric.
         if Internal_Rank != 'X':
             def findVisibilityLimits(dif_from, dif_to):
-                PGen = (dif_from <= L1 and dif_to <= L1) or (dif_from >= L2 and dif_to >= L2)
-                if PGen == False:  # If at least part is INSIDE of visibility limit
+                not_visible_during_transit = (dif_from <= L1 and dif_to <= L1) or (dif_from >= L2 and dif_to >= L2)
+                if not_visible_during_transit == False:  # If at least part is INSIDE of visibility limit
                     L_from, L_to = max(dif_from, L1), min(dif_to, L2)
-                elif PGen == True:
+                elif not_visible_during_transit == True:
                     L_from, L_to = 0, 0
                 
                 return L_from, L_to
             
             # First baseline visibility limits
-            L3, L4 = findVisibilityLimits(dif_BS, dif_T1)
+            L_BS1, L_BS2 = findVisibilityLimits(dif_BS, dif_T1) #34
             # Ingress visibility limits
-            L5, L6 = findVisibilityLimits(dif_T1, dif_T2)
+            L_In1, L_In2 = findVisibilityLimits(dif_T1, dif_T2) #56
             # Full transit limits
-            L7, L8 = findVisibilityLimits(dif_T2, dif_T3)
+            L_Tr1, L_Tr2 = findVisibilityLimits(dif_T2, dif_T3) #78
             # Egress limits
-            L9, L10 = findVisibilityLimits(dif_T3, dif_T4)
+            L_Eg1, L_Eg2 = findVisibilityLimits(dif_T3, dif_T4) #910
             # Second baseline limits
-            L11, L12 = findVisibilityLimits(dif_T4, dif_BE)
+            L_BE1, L_BE2 = findVisibilityLimits(dif_T4, dif_BE) #1112
 
 
             # What times should you put on your observing proposal? For this, UTC is convenient.
             # All previous calculations use BJD_TDB - these are best for publications!
             # This step was previously handled by P2_Timesplitter, but has been shrunk to go here.
-            PropStart = midnight.datetime + dt.timedelta(0,0,0,0,0,L1)
-            ObsStart_JD = BJD2UTC(PropStart, LockOn)
+            ProperStart = midnight.datetime + dt.timedelta(0,0,0,0,0,L1)
+            ObsStart_JD = BJD2UTC(ProperStart, LockOn)
             
-            PropEnd = midnight.datetime + dt.timedelta(0,0,0,0,0,L2)
-            ObsEnd_JD = BJD2UTC(PropEnd, LockOn)
+            ProperEnd = midnight.datetime + dt.timedelta(0,0,0,0,0,L2)
+            ObsEnd_JD = BJD2UTC(ProperEnd, LockOn)
             
+
             # Recovery of base for air mass integration.
             # If it's a two-night event, a slightly extended integration base is needed. Try/except catches this.
+
+            def Air_Mass_Marker_Calc(L1, L2, INT_val):
+                Air_Mass_Marker = max(0,
+                        3 * ((L2-L1) / INT_val - 2/3)
+                        ) # Returns an air mass weighting between 0 and 1, where 30 deg = 0.   
+                return Air_Mass_Marker
+            
             try:
+                epsrel = 1e-5
+                INT_y = abs(np.sin(np.deg2rad(targ_altazs.alt.degree)))**(-0.6)
+
                 with np.errstate(invalid='raise'):
-                    f3 = interp1d(delta_midnight_targ,
-                                  abs(np.sin(np.deg2rad(targ_altazs.alt.degree)))**(-0.6),
-                                  kind='cubic')
-                    Sval, Serr = integrate.quad(f3, L1, L2, epsrel=1e-5)
-                    Air_Mass_Marker = max(0, 3 * ((L2-L1) / Sval - 2/3)) # Returns an air mass weighting between 0 and 1, where 30 deg = 0.   
+                    f = interp1d(delta_midnight_targ, INT_y, kind='cubic')
+                    INT_val, INT_err = integrate.quad(f, L1, L2, epsrel=epsrel)
+                    Air_Mass_Marker = Air_Mass_Marker_Calc(L1, L2, INT_val)
                      
             except ValueError:
-                ext_delta_midnight = np.linspace(-13, 19, targ_samples) * u.hour
-                f3 = interp1d(ext_delta_midnight,
-                              abs(np.sin(np.deg2rad(targ_altazs.alt.degree)))**(-0.6),
-                              kind='cubic')
+                extra_delta_midnight = np.linspace(-13, 19, targ_samples) * u.hour
+                f = interp1d(extra_delta_midnight, INT_y, kind='cubic')
                 try:
                     with np.errstate(invalid='raise'):
-                        Sval, Serr = integrate.quad(f3, L1, L2, epsrel=1e-5)
-                        Air_Mass_Marker = max(0, 3 * ((L2-L1) / Sval - 2/3)) # Returns an air mass weighting between 0 and 1, where 30 deg = 0.
-                except ValueError: # Second exception for very long transiters (eg. Kepler-432)
-                    Sval, Serr = integrate.quad(f3, L1-24, L2-24, epsrel=1e-5)
-                    Air_Mass_Marker = max(0, 3 * (((L2-24) - (L1-24)) / Sval - 2/3))
+                        INT_val, INT_err = integrate.quad(f, L1, L2, epsrel=epsrel)
+                        Air_Mass_Marker = Air_Mass_Marker_Calc(L1, L2, INT_val)
+
+                except ValueError:  # Second exception for very long transiters (eg. Kepler-432)
+                    INT_val, INT_err = integrate.quad(f, L1-24, L2-24, epsrel=epsrel)
+                    Air_Mass_Marker = Air_Mass_Marker_Calc(L1-24, L2-24, INT_val)
+
 
             # Weight by percentage of event + baseline captured.    
             try:
                 with np.errstate(invalid='raise'):
-                    WBase = ((L4-L3) + (L12-L11)) / 2                  # Baseline
-                    WTrans = (L8-L7) / (dif_T3-dif_T2)                     # Full depth
-                    WInOut = ((L10-L9) + (L6-L5)) / (2 * (dif_T2-dif_T1))  # Ingress-egress
+                    WBase = ((L_BS2-L_BS1) + (L_BE2-L_BE1)) / 2            # Baseline
+                    WTrans = (L_Tr2-L_Tr1) / (dif_T3-dif_T2)               # Full depth
+                    WInOut = ((L_Eg2-L_Eg1) + (L_In2-L_In1)) / (2 * (dif_T2-dif_T1))    # Ingress-egress
 
                     event_weight = np.around(WBase * WTrans * WInOut, 10)
                    
             except FloatingPointError: # Case grazing transits -- No need to consider WTrans!
-                WBase = ((L4-L3) + (L12-L11)) / 2                  # Baseline
-                WTrans = np.nan                                    # Full depth (never achieved for grazing events!)
-                WInOut = ((L10-L9) + (L6-L5)) / (2 * (dif_T2-dif_T1))  # Ingress-egress
+                WBase = ((L_BS2-L_BS1) + (L_BE2-L_BE1)) / 2                 # Baseline
+                WTrans = np.nan                                             # Full depth (never achieved for grazing events!)
+                WInOut = ((L_Eg2-L_Eg1) + (L_In2-L_In1)) / (2 * (dif_T2-dif_T1))        # Ingress-egress
 
                 event_weight = np.around(WBase * WInOut, 10)
 
             except ZeroDivisionError:   
-                sys.exit(f'[MP_Process] ZeroDivisionError for {csv_name} ({planet_name}) transiting at {T1} - flag me!')
+                sys.exit(f'\n[P2_MultiprocessingProcess] ZeroDivisionError for {csv_name} ({planet_name}) transiting at {T1} - flag me!')
 
-        
-            # ABOVE CODE IS CURRENTLY UN-REFACTORED
             # Acquire moon noise metric
             if toggle_moonlight_noise == True:
-                LUT_times = pd.to_datetime(moon_LUT['obstime'])
+                LUT_times = pd.to_datetime(moon_LUT['time_UTC'])
                 ObsStart_JD_dt = ObsStart_JD.to_datetime()
                 idx_ObsStart = (LUT_times - ObsStart_JD_dt).abs().idxmin() 
 
@@ -802,7 +829,6 @@ def P2Predictor(
             plt.close(fig)  # This is still needed to release system resources after plot is saved. Must be explicit!
         
         return phase, min(seps), Internal_Rank, ObsStart_JD, ObsEnd_JD, Air_Mass_Marker, WBase, WTrans, WInOut, event_weight, moon_noise_metric
-        # Note the conversion to UTC for our observing start/end times!
     
 
     def FinalMetric(row):

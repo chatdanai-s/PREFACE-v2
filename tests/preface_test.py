@@ -36,7 +36,7 @@ MoonlightConfigs = MoonlightNoiseConfigurations(
 )
 MultiprocessingConfigs = MultiprocessingConfigurations(
     toggle_multiprocessing=True,
-    cores_to_leave_out=1
+    cores_to_leave_out=2
 )
 
 run_preface(TelescopeConfigurations=TelescopeConfigs,

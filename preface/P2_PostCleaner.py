@@ -39,13 +39,14 @@ def Cleaner(csvrankpath, csvoutpath, csvendpath, csvscorepath,
     Cols = ['Planet', 'R*', 'Rp', 'RA:HH', 'RA:MM', 'RA:SS', 'Dec:DD', 'Dec:MM', 'Dec:SS',
             'T14', 'Depth', 'T0 (HJD or BJD)', 'T0_err', 'P (day)', 'P_err',
             'Impact Parameter', 'a_Calc', 'Previous Study Flag',
-            'Rank', 'Habitable_Rank', 'Multi_Transit_Rank', 'Multi_Transit_Habitable_Rank',
+            'TSM', 'Rank', 'Habitable_Rank', 'Multi_Transit_Rank', 'Multi_Transit_Habitable_Rank',
             'RA:HMS', 'Dec:Deg']        # Cols to Forward Fill NA
     bigdf[Cols] = bigdf[Cols].ffill()   # Forward filling NA
     
     bigdf = bigdf[bigdf['Internal Rank'] != 'X'] # Discard unobservable events.
     bigdf = bigdf[bigdf[f'Final_{Metric_Mode}'] != 0]
     bigdf.sort_values(by=[Metric_Mode, f'Final_{Metric_Mode}'], ascending=[False, False], inplace=True)  # Sort bigdf appropriately
+
 
     # Then, grab a few extra columns which are handy for observers to have -- dq
     dq = pd.read_csv(rf'{csvrankpath}/RankedTEPSet_{Inst}_{Filter}-band_for_{Run_Mode}_{Add_Noise}_{Defocus}.csv',

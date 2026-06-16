@@ -206,7 +206,7 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
         start = time.time()
 
         df_altazs = pd.DataFrame({
-            "obstime": obstimes_1m.iso,
+            "obstime": obstimes_1m.to_datetime(),
             "sun_alt": np.round(sun_alt, 3).astype(np.float32),
             "sun_az": np.round(sun_az, 3).astype(np.float32),
             "moon_alt": np.round(moon_alt, 3).astype(np.float32),
@@ -333,7 +333,7 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
             delayed(P2_MultiprocessingProcess.P2Predictor)(
                 CSV_core_folder, csv_initiated, output_folder,
                 obs_start, obs_end, scope_df, scope_idx,
-                instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode, viable_cumulative_cut,
+                instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode,
                 toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
                 toggle_graph_outputs, event_weight_graph_threshold,
                 Loc, timezone_str, graph_folder_path, LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON

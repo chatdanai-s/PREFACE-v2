@@ -130,7 +130,7 @@ class OutputConfigurations:
         metric_mode="Rank",
         viable_cumulative_cut=0.97,
         toggle_graph_outputs=True,
-        event_weight_graph_threshold=0.5,
+        event_weight_graph_threshold=0.75,
     ):
 
         # Check observation times
@@ -172,10 +172,10 @@ class OutputConfigurations:
 
         
         # Check event_weight_graph_threshold
-        if (not isNumber(event_weight_graph_threshold)) or (not (0 <= event_weight_graph_threshold <= 1)):
+        if (not isNumber(event_weight_graph_threshold)) or (not (0 < event_weight_graph_threshold <= 1)):
             InputErrorFlag = True
             print(f"[InputCheck] {event_weight_graph_threshold} is not a valid event_weight_graph_threshold! "
-                  "Is it a number between 0 and 1?")
+                  "Is it a number between 0 and 1 (except 0)?")
 
 
         # Terminate if issues arise

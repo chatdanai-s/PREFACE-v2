@@ -7,7 +7,7 @@ from . import P1_RankMaker
 from . import P1_Cutter
 from . import P1_ViabilitySplitter
 from . import P2_MultiprocessingWrapper
-# from . import P2_PostCleaner
+from . import P2_PostCleaner
 
 import pandas as pd
 import numpy as np
@@ -119,16 +119,19 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
     # Run pipeline (Phase 2)
     print('\nRunning Phase Two of PREFACE...\n')
 
-    P2_MultiprocessingWrapper.P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
-                                     scope_df, scope_idx, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,
-                                     *MoonlightnoiseConfigurations.unpack,
-                                     toggle_graph_outputs, event_weight_graph_threshold,
-                                     obs_start, obs_end,
-                                     toggle_multiprocessing, cores_used)
+    filename_pattern, cores_actually_used = P2_MultiprocessingWrapper.P2Wrap(
+        CSV_core_folder, CSV_intermediate_folder, output_folder,
+        scope_df, scope_idx, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,
+        *MoonlightnoiseConfigurations.unpack,
+        toggle_graph_outputs, event_weight_graph_threshold,
+        obs_start, obs_end,
+        toggle_multiprocessing, cores_used
+    )
     
-    # P2_PostCleaner.Cleaner(CSV_core_folder, CSV_intermediate_folder, output_folder,
-    #                        scope_df, scope_idx, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,
-    #                        obs_start, obs_end,
-    #                        toggle_multiprocessing, cores_used)
+    P2_PostCleaner.Cleaner(
+        CSV_intermediate_folder, filename_pattern, output_folder,
+        *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,
+        obs_start, obs_end, cores_actually_used
+    )
     
     print('PREFACE run complete.')

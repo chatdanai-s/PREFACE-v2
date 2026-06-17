@@ -25,7 +25,7 @@ OutputConfigs = OutputConfigurations(
     metric_mode='Rank',
     viable_cumulative_cut=0.97,
     toggle_graph_outputs=True,
-    event_weight_graph_threshold=0.5
+    event_weight_graph_threshold=0.75
 )
 MoonlightConfigs = MoonlightNoiseConfigurations(
     toggle_moonlight_noise=True,
@@ -35,7 +35,7 @@ MoonlightConfigs = MoonlightNoiseConfigurations(
     moonlight_amplification_factor=5
 )
 MultiprocessingConfigs = MultiprocessingConfigurations(
-    toggle_multiprocessing=True,
+    toggle_multiprocessing=False,
     cores_to_leave_out=2
 )
 

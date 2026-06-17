@@ -42,7 +42,8 @@ def P2Predictor(
     instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode,
     toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
     toggle_graph_outputs, event_weight_graph_threshold,
-    Loc, timezone_str, graph_folder_path, LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
+    Loc, timezone_str, graph_folder_path,
+    moon_LUT, sunaltazs_LUT, moonaltazs_LUT
     ):
 
     # Filename of this process
@@ -59,23 +60,6 @@ def P2Predictor(
     x_hold_fall = []
     x_hold_rise = []
     minAlt_cross_hold = []
-
-
-    # Lookup table for moon noise calculations
-    if toggle_moonlight_noise == True:
-        moon_LUT = pd.read_parquet(LUT_FILEPATH_MOON, engine="pyarrow")
-
-    # Lookup table for sun/moon AltAz skycoords
-    altaz_LUT = pd.read_parquet(LUT_FILEPATH_ALTAZS, engine="pyarrow")
-
-    obstime_LUT = Time(
-        altaz_LUT["obstime"].to_numpy(dtype=str),
-        format="iso"
-    )
-    sunaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['sun_alt'], az=altaz_LUT['sun_az'], unit='deg',
-                                obstime=obstime_LUT, location=Loc, frame='altaz')
-    moonaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['moon_alt'], az=altaz_LUT['moon_az'], unit='deg',
-                                 obstime=obstime_LUT, location=Loc, frame='altaz')
 
 
     def AltChecker(row): 
@@ -262,8 +246,7 @@ def P2Predictor(
 
         # Specify co-ordinates of target in sky coords, as previously converted.
         LockOn = ac.SkyCoord(df['RA:HMS'][0], df['Dec:Deg'][0], unit=(u.hourangle, u.deg), frame='icrs')
-        
-
+ 
         # Chooses appropriate midnight for each useful time (for graphing purposes).
         # Use relativedelta to avoid end of months/years breaking the code.
         T1 = row['T1']
@@ -300,11 +283,13 @@ def P2Predictor(
 
 
         # Where is the target from midday to evening?
-        # For very, very significant speed optimization, use LockOn.transform_to() exactly once (instead of 5 in PREFACE v1)
-        # Calculate altazs for 5 minute precision then interpolate much like Sun and Moon
+        # For very, very significant speed optimization, use LockOn.transform_to(frame) as infrequent as possible
+        # All optimizations, in the future, MUST revolve around using this function OUTSIDE df.apply() which is a for-loop.
+
+        # Calculate altazs for 5-minute precision then interpolate much like Sun and Moon
         targ_times_5m = targ_times[::5]
         frame = ac.AltAz(obstime=targ_times_5m, location=Loc)
-        targ_altazs = LockOn.transform_to(frame)        # AltAz pairs created for target
+        targ_altazs = LockOn.transform_to(frame)        # AltAz pairs created for target (70% of EventMetric time is here)
         targ_alt_1m, targ_az_1m = interpolate_altaz(targ_times_5m, targ_altazs, targ_times)
         targ_altazs = ac.SkyCoord(alt=targ_alt_1m, az=targ_az_1m, unit="deg",
                                   obstime=targ_times, location=Loc, frame='altaz')
@@ -335,10 +320,11 @@ def P2Predictor(
         # Finds differences either side of 00:00:00.
         # Note: Take only the value when plotting! You can't plot a unit.
         DIF_PRECISION = 6
+        midnight_mjd = midnight.mjd  # float, compute once
+
         def hours_relative_to_midnight(time):
-            dif = (Time(time) - midnight).to('hr').value
-            dif = round(dif, DIF_PRECISION)
-            return dif
+            dif = (Time(time).mjd - midnight_mjd) * 24  # MJD is in days, *24 = hours
+            return round(dif, DIF_PRECISION)
 
         dif_BS = hours_relative_to_midnight(row['Baseline_Start'])
         dif_T1 = hours_relative_to_midnight(T1)
@@ -635,15 +621,15 @@ def P2Predictor(
                 return L_from, L_to
             
             # First baseline visibility limits
-            L_BS1, L_BS2 = findVisibilityLimits(dif_BS, dif_T1) #34
+            L_BS1, L_BS2 = findVisibilityLimits(dif_BS, dif_T1) 
             # Ingress visibility limits
-            L_In1, L_In2 = findVisibilityLimits(dif_T1, dif_T2) #56
+            L_In1, L_In2 = findVisibilityLimits(dif_T1, dif_T2) 
             # Full transit limits
-            L_Tr1, L_Tr2 = findVisibilityLimits(dif_T2, dif_T3) #78
+            L_Tr1, L_Tr2 = findVisibilityLimits(dif_T2, dif_T3) 
             # Egress limits
-            L_Eg1, L_Eg2 = findVisibilityLimits(dif_T3, dif_T4) #910
+            L_Eg1, L_Eg2 = findVisibilityLimits(dif_T3, dif_T4)
             # Second baseline limits
-            L_BE1, L_BE2 = findVisibilityLimits(dif_T4, dif_BE) #1112
+            L_BE1, L_BE2 = findVisibilityLimits(dif_T4, dif_BE)
 
 
             # What times should you put on your observing proposal? For this, UTC is convenient.
@@ -687,24 +673,27 @@ def P2Predictor(
                     Air_Mass_Marker = Air_Mass_Marker_Calc(L1-24, L2-24, INT_val)
 
 
-            # Weight by percentage of event + baseline captured.    
+            # Weight by percentage of event + baseline captured.
+            EVENT_WEIGHT_PRECISION = DIF_PRECISION - 1
             try:
                 with np.errstate(invalid='raise'):
                     WBase = ((L_BS2-L_BS1) + (L_BE2-L_BE1)) / 2            # Baseline
                     WTrans = (L_Tr2-L_Tr1) / (dif_T3-dif_T2)               # Full depth
                     WInOut = ((L_Eg2-L_Eg1) + (L_In2-L_In1)) / (2 * (dif_T2-dif_T1))    # Ingress-egress
 
-                    event_weight = np.around(WBase * WTrans * WInOut, 10)
+                    event_weight = np.around(WBase * WTrans * WInOut, EVENT_WEIGHT_PRECISION)
                    
             except FloatingPointError: # Case grazing transits -- No need to consider WTrans!
                 WBase = ((L_BS2-L_BS1) + (L_BE2-L_BE1)) / 2                 # Baseline
                 WTrans = np.nan                                             # Full depth (never achieved for grazing events!)
                 WInOut = ((L_Eg2-L_Eg1) + (L_In2-L_In1)) / (2 * (dif_T2-dif_T1))        # Ingress-egress
 
-                event_weight = np.around(WBase * WInOut, 10)
+                event_weight = np.around(WBase * WInOut, EVENT_WEIGHT_PRECISION)
 
             except ZeroDivisionError:   
                 sys.exit(f'\n[P2_MultiprocessingProcess] ZeroDivisionError for {csv_name} ({planet_name}) transiting at {T1} - flag me!')
+
+            WBase, WTrans, WInOut = round(WBase, EVENT_WEIGHT_PRECISION), round(WTrans, EVENT_WEIGHT_PRECISION), round(WInOut, EVENT_WEIGHT_PRECISION)
 
             # Acquire moon noise metric
             if toggle_moonlight_noise == True:
@@ -729,7 +718,7 @@ def P2Predictor(
             WInOut = 0
             event_weight = 0
             moon_noise_metric = 0 # No need to calculate as it is not used
-        
+
 
         # Create plot only if event_weight >= event_weight_graph_threshold to reduce unneccessary images and CPU load
         if (toggle_graph_outputs == True) and (event_weight >= event_weight_graph_threshold):
@@ -820,7 +809,7 @@ def P2Predictor(
 
             ax.set_title(f'{planet_name} Transit Observability for {instrument} from\n' +\
                          f'{(ObsStart_JD + dt.timedelta(hours=utc_offset)).strftime("%b %d %Y %H:%M")} to ' +\
-                         f'{(ObsEnd_JD + dt.timedelta(hours=utc_offset)).strftime("%b %d %Y %H:%M")} (UTC+{utc_offset:.1f})')
+                         f'{(ObsEnd_JD   + dt.timedelta(hours=utc_offset)).strftime("%b %d %Y %H:%M")} (UTC+{utc_offset:.1f})')
 
 
             fig.savefig(graph_folder_path / f'{event_weight:.3f}_{Internal_Rank}_{planet_name}_{instrument}_{T1.strftime("%b-%d-%Y-%H-%M-%S")}.jpg',
@@ -865,14 +854,14 @@ def P2Predictor(
             df = pd.concat([df,
                             pd.DataFrame({'T1': transit_start_times, 'T1_err': transit_start_times_err})],
                             axis=1)
-                            
+            
             # Writes additional key times and results
             df[['T2', 'T0', 'T3', 'T4', 'Baseline_Start', 'Baseline_End']] = df.apply(lambda row: Times_Calc(row),
                                                                                       axis=1, result_type='expand')
             df[['Lunar_Illumination', 'Closest_Lunar_Approach', 'Internal Rank', 'Observation_Start_(UTC)', 'Observation_End_(UTC)',
                 'Air_Mass_Metric', 'Baseline_Weight', 'Transit_Curve_Weight', 'Ingress-Egress_Weight', 'Event_Weight',
                 'Moon_Noise_Metric']] = df.apply(lambda row: EventMetric(row),
-                                                 axis=1, result_type='expand')  
+                                                 axis=1, result_type='expand')
             
             # Final metrics, then export
             df[f'Final_{metric_mode}'] = df.apply(lambda row: FinalMetric(row), axis=1)

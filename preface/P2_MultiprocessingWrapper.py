@@ -26,6 +26,7 @@ from timezonefinder import TimezoneFinder
 # Moonlight background handling modules are lazy imported.
 # SkyCoord lookup table handling
 from astropy.time import Time, TimeDelta
+import astropy.coordinates as ac
 from astropy.coordinates import AltAz, get_sun, get_body, SkyCoord
 from scipy.interpolate import interp1d
 
@@ -62,12 +63,36 @@ def linear_interpolation(x, x1, y1, x2, y2):
     y = y1 + (x - x1) * (y2 - y1)/(x2 - x1)
     return y
 
-# Cublic spline interpolation for altaz
+# Cublic spline interpolation for altaz from obs_times to dense_times
+# Converts to cartesian coordinates first to safely handle:
+# Az wraparound (0/360) and Alt near zenith (~90 deg) singularity
 def interpolate_altaz(obs_times, altazs, dense_times):
-    alt_fn = interp1d(obs_times.jd, altazs.alt.deg, kind='cubic')
-    az_fn = interp1d(obs_times.jd, altazs.az.deg, kind='cubic')
-    alt_interp = alt_fn(dense_times.jd)
-    az_interp = az_fn(dense_times.jd)
+    alt_rad = altazs.alt.rad
+    az_rad  = altazs.az.rad
+
+    # AltAz -> Cartesian unit vectors
+    x = np.cos(alt_rad) * np.cos(az_rad)
+    y = np.cos(alt_rad) * np.sin(az_rad)
+    z = np.sin(alt_rad)
+
+    jd_coarse = obs_times.jd
+    jd_dense  = dense_times.jd
+
+    # Interpolate each Cartesian component independently
+    x_i = interp1d(jd_coarse, x, kind='cubic', fill_value='extrapolate')(jd_dense)
+    y_i = interp1d(jd_coarse, y, kind='cubic', fill_value='extrapolate')(jd_dense)
+    z_i = interp1d(jd_coarse, z, kind='cubic', fill_value='extrapolate')(jd_dense)
+
+    # Re-normalise (cubic spline doesn't preserve unit length)
+    norm = np.sqrt(x_i**2 + y_i**2 + z_i**2)
+    x_i /= norm
+    y_i /= norm
+    z_i /= norm
+
+    # Cartesian -> AltAz
+    alt_interp = np.rad2deg(np.arcsin(np.clip(z_i, -1, 1)))
+    az_interp  = np.rad2deg(np.arctan2(y_i, x_i)) % 360
+
     return alt_interp, az_interp
 
 
@@ -164,11 +189,11 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
         obs_start_LUT = Time(obs_start - dt.timedelta(days=2), format='datetime', scale='tdb')
         obs_end_LUT = Time(obs_end + dt.timedelta(days=2), format='datetime', scale='tdb')
 
-        timestep_5m = TimeDelta(300, format='sec')  # 5-minute sampling
+        timestep_5m = TimeDelta(60*5, format='sec')  # 5-minute sampling
         n_steps_5m = int(((obs_end_LUT - obs_start_LUT) / timestep_5m).value) + 1
         obstimes_5m = obs_start_LUT + timestep_5m * np.arange(n_steps_5m)
 
-        timestep_1m = TimeDelta(60, format='sec')   # 1-minute sampling
+        timestep_1m = TimeDelta(60, format='sec')    # 1-minute sampling
         n_steps_1m = int(((obs_end_LUT - obs_start_LUT) / timestep_1m).value) + 1
         obstimes_1m = obs_start_LUT + timestep_1m * np.arange(n_steps_1m)
 
@@ -209,12 +234,7 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
             "moon_alt": np.round(moon_alt, 3).astype(np.float32),
             "moon_az": np.round(moon_az, 3).astype(np.float32),
         })
-        df_altazs.to_csv(
-            LUT_FILEPATH_ALTAZS,
-            index=False,
-            compression="snappy",
-            float_format="%.3f",
-        )
+        df_altazs.to_parquet(LUT_FILEPATH_ALTAZS, engine="pyarrow", compression="snappy", index=False)
 
         time_taken = time.time() - start
         print(f'>> AltAz LUT exported to {LUT_FILEPATH_ALTAZS}. ({time_taken:.2f} s)')
@@ -275,7 +295,7 @@ def make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_star
 
 
         # Save to dataframe as lookup table, and we are done!
-        df_moon.to_csv(LUT_FILEPATH_MOON, index=False, compression="snappy", float_format="%.3f")
+        df_moon.to_parquet(LUT_FILEPATH_MOON, engine="pyarrow", compression="snappy", index=False)
 
         time_taken = time.time()-start
         print(f'>> Moonlight mag. LUT exported to {LUT_FILEPATH_MOON} ({time_taken:.2f} s)')
@@ -286,6 +306,7 @@ def make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_star
         print('[P2_MultiprocessingWrapper] Moon background metric LUT already exists.')
 
     return LUT_FILEPATH_MOON
+
 
 # Queues and executes Phase Two transit predictor for all planets.
 def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
@@ -302,6 +323,24 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     Loc, timezone_str = get_LocAndTimezoneStr(scope_df, scope_idx)
     LUT_FILEPATH_ALTAZS = make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start, obs_end, Loc)
     LUT_FILEPATH_MOON = make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise) 
+
+
+    # Open all LUTs outside job, as to not reopen everytime
+    if toggle_moonlight_noise == True:
+        moon_LUT = pd.read_parquet(LUT_FILEPATH_MOON, engine="pyarrow")
+    else:
+        moon_LUT = None
+
+    # Lookup table for sun/moon AltAz skycoords
+    altaz_LUT = pd.read_parquet(LUT_FILEPATH_ALTAZS, engine="pyarrow")
+    obstime_LUT = Time(
+        altaz_LUT["obstime"].to_numpy(dtype=str),
+        format="isot"
+    )
+    sunaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['sun_alt'], az=altaz_LUT['sun_az'], unit='deg',
+                                obstime=obstime_LUT, location=Loc, frame='altaz')
+    moonaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['moon_alt'], az=altaz_LUT['moon_az'], unit='deg',
+                                 obstime=obstime_LUT, location=Loc, frame='altaz')
 
 
     # Multiprocessing start
@@ -333,10 +372,13 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
                 instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus, metric_mode,
                 toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
                 toggle_graph_outputs, event_weight_graph_threshold,
-                Loc, timezone_str, graph_folder_path, LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
+                Loc, timezone_str, graph_folder_path,
+                moon_LUT, sunaltazs_LUT, moonaltazs_LUT
                 ) for csv_initiated in tqdm(jobs, desc="CSVs initiated")
             ):
             pass
 
     print(f'+++ Multiprocessing complete! +++')
+
+    return filename_pattern, cores_actually_used
     

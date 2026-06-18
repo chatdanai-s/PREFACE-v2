@@ -6,18 +6,20 @@ import pandas as pd
 import joblib
 from pathlib import Path
 
+
 # Scope df (Cannot import from __init__.py due to circular import)
 PACKAGE_ROOT = Path(__file__).resolve().parent
 CSV_core_folder = PACKAGE_ROOT / "csvbank" / "core"
 scope_df = pd.read_csv(CSV_core_folder / 'Scope.csv')
 
-# Checks if variable is a number or boolean
+# Checks if variable is a number
 def isNumber(var):
     return isinstance(var, (int, float)) and not np.isnan(var)
+# Checks if variable is a boolean
 def isBoolean(var):
     return isinstance(var, bool)
 
-# Checks InputErrorFlag, termminates if False
+# Checks InputErrorFlag (bool), terminates if False
 def checkInputErrorFlag(InputErrorFlag):
     if InputErrorFlag == True:
         sys.exit('[InputCheck] Invalid input(s) found -- PREFACE terminated.')
@@ -25,6 +27,10 @@ def checkInputErrorFlag(InputErrorFlag):
 
 # Telescope configs
 class TelescopeConfigurations:
+    """
+    Configuration container for telescope and instrument settings.
+    """
+
     def __init__(
         self,
         instrument: str,
@@ -33,7 +39,34 @@ class TelescopeConfigurations:
         toggle_sky_noise=True,
         toggle_defocus=True
     ):
-        
+        """
+        Initialize and validate telescope-specific configuration parameters
+        before storing them for use throughout the PREFACE pipeline.
+
+        Parameters
+        ----------
+        instrument : str
+            Name of the observing instrument or telescope.
+        filter_name : str
+            Photometric filter to be used for calculations.
+        run_mode : str
+            Observation mode. Must be one of ``"Half_Well"``,
+            ``"Spectral_Half_Well"``, or ``"IR_Half_Well"``.
+        toggle_sky_noise : bool, default=True
+            Whether to include sky background noise in calculations.
+        toggle_defocus : bool, default=True
+            Whether to apply telescope defocus modelling when available.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        SystemExit
+            If any supplied configuration parameter is invalid.
+        """
+
         # Check instrument and filter_name
         InputErrorFlag = False
         scope_idx = None
@@ -111,6 +144,17 @@ class TelescopeConfigurations:
 
     @property
     def unpack(self):
+        """
+        Return the stored telescope configuration as an ordered list.
+
+        Returns
+        -------
+        list
+            Values in the order:
+            ``[instrument, filter_name, run_mode,
+            toggle_sky_noise, toggle_defocus]``.
+        """
+
         return [
             self.instrument,
             self.filter_name,
@@ -122,6 +166,11 @@ class TelescopeConfigurations:
 
 # Output configs
 class OutputConfigurations:
+    """
+    Configuration container controlling PREFACE output generation
+    and exoplanet ranking settings.
+    """
+
     def __init__(
         self,
         observation_start: datetime,
@@ -132,6 +181,39 @@ class OutputConfigurations:
         toggle_graph_outputs=True,
         event_weight_graph_threshold=0.75,
     ):
+        """
+        Initialize and validate output-related configuration parameters
+        before storing them for use throughout the PREFACE pipeline.
+
+        Parameters
+        ----------
+        observation_start : datetime.datetime
+            Beginning of the observation interval.
+        observation_end : datetime.datetime
+            End of the observation interval.
+        output_folder : str or pathlib.Path
+            Existing directory in which output files will be written.
+        metric_mode : str, default="Rank"
+            Ranking metric used for event prioritization.
+            Must be one of ``"Rank"``, ``"Habitable_Rank"``,
+            ``"Multi_Transit_Rank"``, or ``"Multi_Transit_Habitable_Rank"``.
+        viable_cumulative_cut : float, default=0.97
+            Cumulative viability threshold between 0 and 1.
+        toggle_graph_outputs : bool, default=True
+            Whether diagnostic plots for each transit event should be generated.
+        event_weight_graph_threshold : float, default=0.75
+            Minimum event weight required for graph generation.
+            Must be between 0 and 1.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        SystemExit
+            If any supplied configuration parameter is invalid.
+        """
 
         # Check observation times
         InputErrorFlag = False
@@ -193,6 +275,18 @@ class OutputConfigurations:
 
     @property
     def unpack(self):
+        """
+        Return the stored output configuration as an ordered list.
+
+        Returns
+        -------
+        list
+            Values in the order:
+            ``[observation_start, observation_end, output_folder,
+            metric_mode, viable_cumulative_cut,
+            toggle_graph_outputs, event_weight_graph_threshold]``.
+        """
+
         return [
             self.observation_start,
             self.observation_end,
@@ -206,6 +300,10 @@ class OutputConfigurations:
 
 # Moonlight noise configs (Default: False)
 class MoonlightNoiseConfigurations:
+    """
+    Configuration container for moonlight background noise modelling.
+    """
+
     def __init__(
         self,
         toggle_moonlight_noise=False,
@@ -214,6 +312,37 @@ class MoonlightNoiseConfigurations:
         asymmetry_factor=0.6,
         moonlight_amplification_factor=5,
     ):
+        """
+        Initialize and validate moonlight noise model parameters
+        before storing them for use throughout the PREFACE pipeline.
+
+        Parameters
+        ----------
+        toggle_moonlight_noise : bool, default=False
+            Whether moonlight noise modelling is enabled.
+        scattering_aod : float, default=0.2
+            Atmospheric scattering aerosol optical depth.
+            Must be at least 0.
+        absorption_aod : float, default=0.3
+            Atmospheric absorption aerosol optical depth.
+            Must be at least 0.
+        asymmetry_factor : float, default=0.6
+            Scattering phase-function asymmetry parameter.
+            Must be between -1 and +1.
+        moonlight_amplification_factor : float, default=5
+            Empirical scaling factor applied to the moonlight model.
+            Defined as the effective decrease in lunar magnitude used to
+            amplify modeled moonlight brightness and its impact on target SNR.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        SystemExit
+            If any supplied configuration parameter is invalid.
+        """
         
         # Check toggle_moonlight_noise
         InputErrorFlag = False
@@ -262,6 +391,18 @@ class MoonlightNoiseConfigurations:
       
     @property
     def unpack(self):
+        """
+        Return the stored moonlight noise configuration as an ordered list.
+
+        Returns
+        -------
+        list
+            Values in the order:
+            ``[toggle_moonlight_noise, scattering_aod,
+            absorption_aod, asymmetry_factor,
+            moonlight_amplification_factor]``.
+        """
+
         return [
             self.toggle_moonlight_noise,
             self.scattering_aod,
@@ -273,11 +414,38 @@ class MoonlightNoiseConfigurations:
 
 # Multiprocessing configs (Default: True, use all cores except one)
 class MultiprocessingConfigurations:
+    """
+    Configuration container controlling multiprocessing behaviour
+    and CPU resource allocation.
+    """
+
     def __init__(
         self,
         toggle_multiprocessing=True,
         cores_to_leave_out=1,
     ):
+        """
+        Initialize and validate multiprocessing configuration parameters
+        before storing them for use throughout the PREFACE pipeline.
+
+        Parameters
+        ----------
+        toggle_multiprocessing : bool, default=True
+            Whether multiprocessing should be enabled.
+        cores_to_leave_out : int, default=1
+            Number of logical CPU cores reserved from computation.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        SystemExit
+            If the multiprocessing configuration is invalid or the user
+            declines confirmation when all CPU cores would be utilized.
+        """
+
         # Check multiprocessing configurations
         InputErrorFlag = False
 
@@ -318,10 +486,20 @@ class MultiprocessingConfigurations:
 
     @property
     def unpack(self):
+        """
+        Return the stored multiprocessing configuration as an ordered list.
+
+        Returns
+        -------
+        list
+            Values in the order:
+            ``[toggle_multiprocessing, total_cores,
+            cores_to_leave_out, cores_used]``.
+        """
+
         return [
             self.toggle_multiprocessing,
             self.total_cores,
             self.cores_to_leave_out,
             self.cores_used
         ]
-    

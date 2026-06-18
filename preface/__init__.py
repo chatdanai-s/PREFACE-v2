@@ -18,16 +18,29 @@ from pathlib import Path
 
 # Locate CSV files
 PACKAGE_ROOT = Path(__file__).resolve().parent
-CSV_core_folder = PACKAGE_ROOT / "csvbank" / "core"
-CSV_intermediate_folder = PACKAGE_ROOT / "csvbank" / "intermediate"
+CSV_core_folder = PACKAGE_ROOT / "csvbank" / "core"                     # Contains core catalogues and input CSVs
+CSV_intermediate_folder = PACKAGE_ROOT / "csvbank" / "intermediate"     # Contains intermediate results and LUTs
 
 # Scope dataframe load and useful variables
-scope_df = pd.read_csv(CSV_core_folder / 'Scope.csv')
-telescope_list = scope_df['Telescope'].tolist()
-csvbank_location = PACKAGE_ROOT / "csvbank"
+scope_df = pd.read_csv(CSV_core_folder / 'Scope.csv')   # Dataframe of all telescope information
+telescope_list = scope_df['Telescope'].tolist()         # List of available telescopes extracted from scope_df
+csvbank_location = PACKAGE_ROOT / "csvbank"             # Directory to all CSVs used and generated in PREFACE
 
 # Useful utility functions
 def wipe_intermediate_csvs():
+    """
+    Delete all files contained within the intermediate CSV directory.
+
+    This utility recursively removes every file and symbolic link located
+    in the PREFACE intermediate data directory while preserving the
+    directory structure itself. It is intended for clearing temporary
+    outputs generated during previous runs.
+
+    Returns
+    -------
+    None
+    """
+
     for path in CSV_intermediate_folder.rglob("*"):
         if path.is_file() or path.is_symlink():
             path.unlink()
@@ -35,6 +48,31 @@ def wipe_intermediate_csvs():
 
 
 def get_available_filters_list(instrument: str):
+    """
+    Retrieve the list of supported photometric filters for an instrument.
+
+    The available filters are determined by identifying filter names for
+    which both zero-point magnitude (``mzp_*``) and sky brightness
+    (``msky_*``) entries are defined in the instrument database.
+
+    Parameters
+    ----------
+    instrument : str
+        Name of the telescope or instrument as listed in ``Scope.csv``.
+        See preface.telescope_list for list of available telescopes.
+
+    Returns
+    -------
+    list[str]
+        Alphabetically sorted list of supported filter names.
+
+    Raises
+    ------
+    ValueError
+        If the specified instrument is not present in the instrument
+        database.
+    """
+        
     # Find the row corresponding to the instrument
     row = scope_df.loc[scope_df["Telescope"] == instrument]
     if row.empty:
@@ -60,6 +98,19 @@ def get_available_filters_list(instrument: str):
 
 # Open core CSV files remotely
 def open_core_csv(csv_name: str):
+    """
+    Open a core CSV file using the operating system's default application.
+
+    Parameters
+    ----------
+    csv_name : str
+        Filename of the CSV located in the PREFACE core CSV directory.
+
+    Returns
+    -------
+    None
+    """
+        
     csv_path = CSV_core_folder / csv_name
     
     if sys.platform.startswith("win"):
@@ -70,9 +121,27 @@ def open_core_csv(csv_name: str):
         subprocess.run(["xdg-open", str(csv_path)], check=True)
     
 def open_scope_csv():
+    """
+    Open the bundled ``Scope.csv`` database using the default system
+    application.
+
+    Returns
+    -------
+    None
+    """
+
     open_core_csv("Scope.csv")
 
 def open_aggregated_aeronet_csv():
+    """
+    Open the bundled aggregated AERONET atmospheric data table using the
+    default system application.
+
+    Returns
+    -------
+    None
+    """
+
     open_core_csv("AERONET_AOD+INV_Level2_Daily_V3_monthly-median.csv")
 
 
@@ -81,7 +150,37 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
                 OutputConfigurations: OutputConfigurations,
                 MoonlightnoiseConfigurations: MoonlightNoiseConfigurations,
                 MultiprocessingConfigurations: MultiprocessingConfigurations):
-    
+    """
+    Execute the complete PREFACE processing pipeline.
+
+    This function orchestrates all stages of the PREFACE workflow,
+    including Phase One (target score ranking), Phase Two (transit event filtering),
+    parallel event processing, and final post-processing. The behavior of the
+    pipeline is controlled through the provided configuration objects.
+
+    Parameters
+    ----------
+    TelescopeConfigurations : TelescopeConfigurations
+        Configuration specifying the observing instrument, photometric
+        filter, and telescope-related settings.
+
+    OutputConfigurations : OutputConfigurations
+        Configuration specifying the observation window, output location,
+        ranking metric type, viability threshold, and graph generation options.
+
+    MoonlightnoiseConfigurations : MoonlightNoiseConfigurations
+        Configuration controlling moonlight noise modelling, including
+        atmospheric scattering parameters and moonlight amplification factors.
+
+    MultiprocessingConfigurations : MultiprocessingConfigurations
+        Configuration defining multiprocessing behavior and CPU core
+        allocation.
+
+    Returns
+    -------
+    None
+    """
+
     # Unpack variables (Some unused variables left for code readability)
     instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus = TelescopeConfigurations.unpack
     obs_start, obs_end, output_folder, metric_mode, viable_cumulative_cut, toggle_graph_outputs, event_weight_graph_threshold = OutputConfigurations.unpack

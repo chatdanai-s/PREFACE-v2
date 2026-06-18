@@ -35,7 +35,7 @@ MoonlightConfigs = MoonlightNoiseConfigurations(
     moonlight_amplification_factor=5
 )
 MultiprocessingConfigs = MultiprocessingConfigurations(
-    toggle_multiprocessing=False,
+    toggle_multiprocessing=True,
     cores_to_leave_out=2
 )
 

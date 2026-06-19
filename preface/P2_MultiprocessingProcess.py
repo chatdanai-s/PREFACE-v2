@@ -35,6 +35,62 @@ from scipy.interpolate import interp1d
 from dateutil.relativedelta import relativedelta
 
 
+# Cache all LUTs outside main function, as to not reopen everytime
+_lut_cache = {}
+def _get_shared_luts(LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON, toggle_moonlight_noise, Loc):
+    cache_key = (str(LUT_FILEPATH_ALTAZS),
+                 str(LUT_FILEPATH_MOON))
+
+    if cache_key not in _lut_cache:
+        # This block only runs the FIRST time this worker sees this path.
+        altaz_LUT = pd.read_parquet(LUT_FILEPATH_ALTAZS, engine="pyarrow")
+        obstime_LUT = Time(altaz_LUT["obstime"].to_numpy(dtype=str), format="isot")
+        sunaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['sun_alt'], az=altaz_LUT['sun_az'], unit='deg',
+                                    obstime=obstime_LUT, location=Loc, frame='altaz')
+        moonaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['moon_alt'], az=altaz_LUT['moon_az'], unit='deg',
+                                    obstime=obstime_LUT, location=Loc, frame='altaz')
+
+        moon_LUT = pd.read_parquet(LUT_FILEPATH_MOON, engine="pyarrow") if toggle_moonlight_noise else None
+
+        _lut_cache[cache_key] = (sunaltazs_LUT, moonaltazs_LUT, moon_LUT)
+
+    # Every subsequent call (2nd, 3rd, ... Nth CSV handled by this worker) hits this line directly.
+    return _lut_cache[cache_key]
+
+
+# Altitude constants needed
+minAlt   = 30        # Min obs. altitude for air mass = 2.
+maxAlt   = 88        # Max obs. altitude for the Liverpool instrument
+nightAlt = -18       # Marker for night start/end altitude
+
+# Blank arrays for use with time cut/observation ranking
+transit_start_times = []
+transit_start_times_err = []
+x_hold_fall = []
+x_hold_rise = []
+minAlt_cross_hold = []
+
+
+# Specify sky co-ordinates of target appropriate units.
+def AltChecker(row): 
+    LockOn = ac.SkyCoord(
+        row['RA:HH'] + (row['RA:MM']/60) + (row['RA:SS']/3600),
+        row['Dec:DD'] + np.sign(row['Dec:DD']) * (row['Dec:MM']/60 + row['Dec:SS']/3600),
+        unit=(u.hourangle, u.deg),
+        frame='icrs'
+    )
+    return LockOn.ra.hour, LockOn.dec.degree
+
+# Conversion from BJD_TDB to UTC
+def BJD2UTC(time, LockOn, Loc):
+    time_BJD = Time(time, scale='tdb', location=Loc)   # BJD_TDB (implicit)
+    ltt_bary = time_BJD.light_travel_time(LockOn)      # JD to BJD conversion factor (light travel time)
+    JD_TDB = time_BJD - ltt_bary                       # JD_TDB
+    JD_UTC = JD_TDB.utc                                # JD_UTC
+
+    return JD_UTC
+
+
 # Master function for Phase Two - calculation of event times/metrics.
 def P2Predictor(
     CSV_core_folder, csv_initiated, output_folder,
@@ -43,38 +99,20 @@ def P2Predictor(
     toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
     toggle_graph_outputs, event_weight_graph_threshold,
     Loc, timezone_str, graph_folder_path,
-    moon_LUT, sunaltazs_LUT, moonaltazs_LUT
+    LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
     ):
 
     # Filename of this process
     csv_name = os.path.basename(csv_initiated)
-
-    # Altitude constants needed
-    minAlt   = 30        # Min obs. altitude for air mass = 2.
-    maxAlt   = 88        # Max obs. altitude for the Liverpool instrument
-    nightAlt = -18       # Marker for night start/end altitude
-
-    # Blank arrays for use with time cut/observation ranking
-    transit_start_times = []
-    transit_start_times_err = []
-    x_hold_fall = []
-    x_hold_rise = []
-    minAlt_cross_hold = []
+    # Get relevant (cached) LUTs
+    sunaltazs_LUT, moonaltazs_LUT, moon_LUT = _get_shared_luts(
+        LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON, toggle_moonlight_noise, Loc
+    )
 
 
-    def AltChecker(row): 
-        # Specify sky co-ordinates of target.
-        LockOn = ac.SkyCoord(
-            row['RA:HH'] + (row['RA:MM']/60) + (row['RA:SS']/3600),
-            row['Dec:DD'] + np.sign(row['Dec:DD']) * (row['Dec:MM']/60 + row['Dec:SS']/3600),
-            unit=(u.hourangle, u.deg),
-            frame='icrs'
-        )
-        return LockOn.ra.hour, LockOn.dec.degree
-
-
+    # Internal conversion to recover midpoint of first observation in BJD_TDB.    
     def T1_Calc(row):
-        # Internal conversion to recover midpoint of first observation in BJD_TDB.    
+        
         period_d = row['P (day)']
         period_sec = (period_d * u.d).to(u.s).value
         eph_obj = Time(row['T0 (HJD or BJD)'], format='jd').datetime    # Scale is not JD, but the format (245XXXX.XXX...) is!
@@ -146,15 +184,6 @@ def P2Predictor(
         baseline_right = T4 + dt.timedelta(hours=1) 
 
         return T2, T0, T3, T4, baseline_left, baseline_right
-
-    # Conversion from BJD_TDB to UTC
-    def BJD2UTC(time, LockOn):
-        time_BJD = Time(time, scale='tdb', location=Loc)   # BJD_TDB (implicit)
-        ltt_bary = time_BJD.light_travel_time(LockOn)      # JD to BJD conversion factor (light travel time)
-        JD_TDB = time_BJD - ltt_bary                       # JD_TDB
-        JD_UTC = JD_TDB.utc                                # JD_UTC
-
-        return JD_UTC
 
 
     # Adds moon noise metric which is essentially SNR with yes moon / SNR with no moon, at start of observation.
@@ -636,12 +665,10 @@ def P2Predictor(
             # All previous calculations use BJD_TDB - these are best for publications!
             # This step was previously handled by P2_Timesplitter, but has been shrunk to go here.
             ProperStart = midnight.datetime + dt.timedelta(0,0,0,0,0,L1)
-            ObsStart_JD = BJD2UTC(ProperStart, LockOn)
-            
             ProperEnd = midnight.datetime + dt.timedelta(0,0,0,0,0,L2)
-            ObsEnd_JD = BJD2UTC(ProperEnd, LockOn)
+            ObsStart_JD, ObsEnd_JD, midnight_UTC = BJD2UTC([ProperStart, ProperEnd, midnight.datetime],
+                                                           LockOn, Loc)
             
-
             # Recovery of base for air mass integration.
             # If it's a two-night event, a slightly extended integration base is needed. Try/except catches this.
 
@@ -722,9 +749,10 @@ def P2Predictor(
 
         # Create plot only if event_weight >= event_weight_graph_threshold to reduce unneccessary images and CPU load
         if (toggle_graph_outputs == True) and (event_weight >= event_weight_graph_threshold):
+            PLOT_DECIMATION = 2   # Display-only thinning of target/moon path points
+
             # Shift time axis from BJD to local time for that telescope (for graphing purposes)
             # First, find timedelta where midnight_UTC - midnight_BJD in hours
-            midnight_UTC = BJD2UTC(midnight, LockOn)
             delta_h_UTC_BJD = (midnight_UTC - midnight).to('hour').value
             # Next, find utc offset where midnight_local - midnight_UTC in hours
             utc_offset = midnight_UTC.to_datetime(timezone=ZoneInfo(timezone_str)).utcoffset() / dt.timedelta(hours=1)
@@ -751,12 +779,18 @@ def P2Predictor(
             plt.ioff()
             fig, ax = plt.subplots(figsize=(18, 10))
 
-            ax.plot(delta_midnight_targ_local[moonaltmask], moon_altazs.alt[moonaltmask], markevery=20,
-                    color='darkorange', zorder=2, linestyle='-.', linewidth=2.5,
+            ax.plot(delta_midnight_targ_local[moonaltmask][::PLOT_DECIMATION],
+                    moon_altazs.alt[moonaltmask][::PLOT_DECIMATION],
+                    markevery=20, color='darkorange', zorder=2, linestyle='-.', linewidth=2.5,
                     label='Lunar Path')                        # Moon path
-            sc = ax.scatter(delta_midnight_targ_local[targaltmask], targ_altazs.alt[targaltmask], c=targ_altazs.az.value[targaltmask], 
-                            cmap=cmap, norm=norm, zorder=3, lw=0, s=15)   # Target path
+            
+            sc = ax.scatter(delta_midnight_targ_local[targaltmask][::PLOT_DECIMATION],
+                            targ_altazs.alt[targaltmask][::PLOT_DECIMATION],
+                            c=targ_altazs.az.value[targaltmask][::PLOT_DECIMATION],
+                            cmap=cmap, norm=norm, zorder=3, lw=0, s=15,
+                            antialiased=False)   # Target path
             ax.plot([], [], color='blue', label='Target Path') # Dummy plot to put on legend
+
             ax.scatter(delta_midnight_sep_local, targsep_altazs.alt,
                        facecolors='white', edgecolors='blue', zorder=4, s=100, linewidths=2, marker='o',
                        label='Lunar Separation (deg)')         # Separation scatterplot
@@ -811,9 +845,9 @@ def P2Predictor(
                          f'{(ObsStart_JD + dt.timedelta(hours=utc_offset)).strftime("%b %d %Y %H:%M")} to ' +\
                          f'{(ObsEnd_JD   + dt.timedelta(hours=utc_offset)).strftime("%b %d %Y %H:%M")} (UTC+{utc_offset:.1f})')
 
-
             fig.savefig(graph_folder_path / f'{event_weight:.3f}_{Internal_Rank}_{planet_name}_{instrument}_{T1.strftime("%b-%d-%Y-%H-%M-%S")}.jpg',
-                        dpi=100, transparent=False, facecolor='white', edgecolor='black', format='jpg')
+                        dpi=70, transparent=False, facecolor='white', edgecolor='black', format='jpg',
+                        pil_kwargs={'quality': 75, 'optimize': False, 'progressive': False})
 
             plt.close(fig)  # This is still needed to release system resources after plot is saved. Must be explicit!
         

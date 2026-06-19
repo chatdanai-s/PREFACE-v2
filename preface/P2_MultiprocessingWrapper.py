@@ -20,7 +20,7 @@ from preface.P1_ModCheck import creation_date
 
 # Timezone handling
 import astropy.units as u
-from astropy.coordinates import EarthLocation
+from astropy.coordinates import EarthLocation, CIRS
 from timezonefinder import TimezoneFinder
 
 # Moonlight background handling modules are lazy imported.
@@ -325,24 +325,6 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     LUT_FILEPATH_MOON = make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_start, obs_end, toggle_moonlight_noise) 
 
 
-    # Open all LUTs outside job, as to not reopen everytime
-    if toggle_moonlight_noise == True:
-        moon_LUT = pd.read_parquet(LUT_FILEPATH_MOON, engine="pyarrow")
-    else:
-        moon_LUT = None
-
-    # Lookup table for sun/moon AltAz skycoords
-    altaz_LUT = pd.read_parquet(LUT_FILEPATH_ALTAZS, engine="pyarrow")
-    obstime_LUT = Time(
-        altaz_LUT["obstime"].to_numpy(dtype=str),
-        format="isot"
-    )
-    sunaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['sun_alt'], az=altaz_LUT['sun_az'], unit='deg',
-                                obstime=obstime_LUT, location=Loc, frame='altaz')
-    moonaltazs_LUT = ac.SkyCoord(alt=altaz_LUT['moon_alt'], az=altaz_LUT['moon_az'], unit='deg',
-                                 obstime=obstime_LUT, location=Loc, frame='altaz')
-
-
     # Multiprocessing start
     if toggle_multiprocessing == True:
         cores_actually_used = cores_used
@@ -365,7 +347,9 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
 
     # Start multiprocessing and wrap with tqdm to get progress bar
     with parallel_config(backend='loky', prefer='processes', inner_max_num_threads=1):
-        for _ in Parallel(n_jobs=cores_actually_used, pre_dispatch=4*cores_actually_used, return_as='generator_unordered')(
+        for _ in Parallel(n_jobs=cores_actually_used,
+                          pre_dispatch=2*cores_actually_used,
+                          return_as='generator_unordered')(
             delayed(P2_MultiprocessingProcess.P2Predictor)(
                 CSV_core_folder, csv_initiated, output_folder,
                 obs_start, obs_end, scope_df, scope_idx,
@@ -373,7 +357,7 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
                 toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor,
                 toggle_graph_outputs, event_weight_graph_threshold,
                 Loc, timezone_str, graph_folder_path,
-                moon_LUT, sunaltazs_LUT, moonaltazs_LUT
+                LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
                 ) for csv_initiated in tqdm(jobs, desc="CSVs initiated")
             ):
             pass

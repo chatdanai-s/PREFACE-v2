@@ -70,6 +70,13 @@ x_hold_fall = []
 x_hold_rise = []
 minAlt_cross_hold = []
 
+# Output plot configurations
+PLOT_DECIMATION = 2   # Display-only thinning of target/moon path points
+# Define custom colormap
+colors = ['blue', 'aqua']
+cmap = LinearSegmentedColormap.from_list('target_cmap', colors, N=180)
+norm = Normalize(vmin=0, vmax=360)
+
 
 # Specify sky co-ordinates of target appropriate units.
 def AltChecker(row): 
@@ -89,6 +96,15 @@ def BJD2UTC(time, LockOn, Loc):
     JD_UTC = JD_TDB.utc                                # JD_UTC
 
     return JD_UTC
+
+# Given T1 (datetime), what is the closest midnight (Time)?
+def closest_midnight(T1):
+    if T1.hour >= 12:
+        midnight = T1.replace(hour=0, minute=0, second=0, microsecond=0) + relativedelta(days=1)
+    else:
+        midnight = T1.replace(hour=0, minute=0, second=0, microsecond=0)
+    midnight = Time(midnight)   # Astropy object conversion for compatibility.
+    return midnight
 
 
 # Master function for Phase Two - calculation of event times/metrics.
@@ -272,9 +288,6 @@ def P2Predictor(
     ##### WE GET INTO CALCULATION AND PLOTTING HERE #####
     def EventMetric(row):
         from preface.P2_MultiprocessingWrapper import interpolate_altaz
-
-        # Specify co-ordinates of target in sky coords, as previously converted.
-        LockOn = ac.SkyCoord(df['RA:HMS'][0], df['Dec:Deg'][0], unit=(u.hourangle, u.deg), frame='icrs')
  
         # Chooses appropriate midnight for each useful time (for graphing purposes).
         # Use relativedelta to avoid end of months/years breaking the code.
@@ -283,11 +296,7 @@ def P2Predictor(
         targ_samples = 1801
 
         # Set closest midnight (BJD) associated with start of transit T1
-        if T1.hour >= 12:
-            midnight = T1.replace(hour=0, minute=0, second=0, microsecond=0) + relativedelta(days=1)
-        else:
-            midnight = T1.replace(hour=0, minute=0, second=0, microsecond=0)
-        midnight = Time(midnight)   # Astropy object conversion for compatibility.
+        midnight = closest_midnight(T1)
 
         # Retrieve relevent delta_midnights and observation times in range (midday to evening)
         delta_midnight_targ = np.linspace(-12, 18, targ_samples) * u.hour  # Time sampled 30h from midnight for target (1 min)
@@ -298,7 +307,7 @@ def P2Predictor(
 
 
         # Where is the sun and moon from midday to evening? 
-        # LUTs are used here because it makes the pipeline way faster (2-3x faster, seriously)
+        # LUTs are used here because it makes the pipeline way faster
         obstime_num = sunaltazs_LUT.obstime.mjd  # Convert to array for indexing mask
         targ_times_num = targ_times.mjd
         sep_times_num  = sep_times.mjd
@@ -312,14 +321,10 @@ def P2Predictor(
 
 
         # Where is the target from midday to evening?
-        # For very, very significant speed optimization, use LockOn.transform_to(frame) as infrequent as possible
-        # All optimizations, in the future, MUST revolve around using this function OUTSIDE df.apply() which is a for-loop.
-
-        # Calculate altazs for 5-minute precision then interpolate much like Sun and Moon
-        targ_times_5m = targ_times[::5]
-        frame = ac.AltAz(obstime=targ_times_5m, location=Loc)
-        targ_altazs = LockOn.transform_to(frame)        # AltAz pairs created for target (70% of EventMetric time is here)
-        targ_alt_1m, targ_az_1m = interpolate_altaz(targ_times_5m, targ_altazs, targ_times)
+        # Retrieve altazs for 10-minute precision then interpolate much like Sun and Moon
+        targ_times_10m = targ_times_10m_list[row.name]
+        targ_altazs_10m = targ_altazs_10m_by_row[row.name]
+        targ_alt_1m, targ_az_1m = interpolate_altaz(targ_times_10m, targ_altazs_10m, targ_times)
         targ_altazs = ac.SkyCoord(alt=targ_alt_1m, az=targ_az_1m, unit="deg",
                                   obstime=targ_times, location=Loc, frame='altaz')
         
@@ -749,7 +754,6 @@ def P2Predictor(
 
         # Create plot only if event_weight >= event_weight_graph_threshold to reduce unneccessary images and CPU load
         if (toggle_graph_outputs == True) and (event_weight >= event_weight_graph_threshold):
-            PLOT_DECIMATION = 2   # Display-only thinning of target/moon path points
 
             # Shift time axis from BJD to local time for that telescope (for graphing purposes)
             # First, find timedelta where midnight_UTC - midnight_BJD in hours
@@ -764,11 +768,6 @@ def P2Predictor(
             delta_midnight_sep_local = delta_midnight_sep + (offset * u.hour)
             xlim = (delta_midnight_targ_local.min().value, delta_midnight_targ_local.max().value)
 
-            # Define custom colormap
-            colors = ['blue', 'aqua']
-            cmap = LinearSegmentedColormap.from_list('target_cmap', colors, N=180)
-            norm = Normalize(vmin=0, vmax=360)
-
             # Altitude mask to only plot whatever is in plot
             moonaltmask = (moon_altazs.alt.value >= -1)
             targaltmask = (targ_altazs.alt.value >= -1)
@@ -776,12 +775,11 @@ def P2Predictor(
             # Plot target path and transit viability for all events.
             # Scatter c argument denotes colour, lw=linewidth, default s=20, zorder stops fill from mucking up the colour of your other lines.
             # Use fig.close(fig) to stop all the figures from eating your RAM.
-            plt.ioff()
             fig, ax = plt.subplots(figsize=(18, 10))
 
             ax.plot(delta_midnight_targ_local[moonaltmask][::PLOT_DECIMATION],
                     moon_altazs.alt[moonaltmask][::PLOT_DECIMATION],
-                    markevery=20, color='darkorange', zorder=2, linestyle='-.', linewidth=2.5,
+                    color='darkorange', zorder=2, linestyle='-.', linewidth=2.5,
                     label='Lunar Path')                        # Moon path
             
             sc = ax.scatter(delta_midnight_targ_local[targaltmask][::PLOT_DECIMATION],
@@ -801,12 +799,12 @@ def P2Predictor(
                             color='violet', xytext=(-7.5, -27), textcoords='offset pixels')
                 
             ax.fill_between(delta_midnight_targ_local.to('hr').value, 0, 90, (sun_altazs.alt <= nightAlt*u.deg),
-                            facecolor='black', alpha=0.95, zorder=0, label='Night')   # Bounded by astronomical twilight
+                            facecolor='black', alpha=1, zorder=0, label='Night')   # Bounded by astronomical twilight
             
             # Red fill denotes transit in progress, superimposed on other zones. alpha denotes transparency.
-            ax.axvspan(dif_BS+offset, dif_BE+offset, 0,90, alpha=0.3, facecolor='r', zorder=1,
+            ax.axvspan(dif_BS+offset, dif_BE+offset, 0,90, alpha=0.30, facecolor='r', zorder=1,
                        label='Observation')
-            ax.axvspan(dif_T1+offset, dif_T4+offset, 0,90, alpha=0.3, facecolor='r', edgecolor='r', hatch='X', zorder=1,
+            ax.axvspan(dif_T1+offset, dif_T4+offset, 0,90, alpha=0.30, facecolor='r', edgecolor='r', hatch='X', zorder=1,
                        label='Transit Active')
             
             ax.axhspan(0, minAlt, xlim[0], xlim[1], facecolor='grey', alpha=0.2, zorder=5,
@@ -888,6 +886,34 @@ def P2Predictor(
             df = pd.concat([df,
                             pd.DataFrame({'T1': transit_start_times, 'T1_err': transit_start_times_err})],
                             axis=1)
+
+            # Optimization routine: Run LockOn.transform_to(frame) ONCE per CSV initiated (instead of once per row)
+            # While this makes code harder to read, the performance gain is well worth it
+            # A big bottleneck is actually the overhead for each .transform_to call
+
+            # Target coord in RA/Dec
+            LockOn = ac.SkyCoord(df['RA:HMS'][0], df['Dec:Deg'][0], unit=(u.hourangle, u.deg), frame='icrs')
+
+            # List of target times to transform
+            targ_samples = 1801
+            min_interval = 10
+            targ_times_10m_list = [
+                (closest_midnight(T1) + np.linspace(-12, 18, targ_samples) * u.hour)[::min_interval]
+                for T1 in df['T1']
+            ]
+            concat_targ_times_10m = Time(   # Transform to vectorizable form
+                np.concatenate([t.jd for t in targ_times_10m_list]),
+                format='jd', scale='utc'
+            )  
+            frame = ac.AltAz(obstime=concat_targ_times_10m, location=Loc)
+            targ_altazs_10m_all = LockOn.transform_to(frame)
+
+            n5m = targ_samples//min_interval + 1
+            targ_altazs_10m_by_row = [
+                targ_altazs_10m_all[i*n5m:(i+1)*n5m]
+                for i in range(len(df))
+            ]  # Call targ_altazs_5m at that row by targ_altazs_5m_by_row[row.name]
+
             
             # Writes additional key times and results
             df[['T2', 'T0', 'T3', 'T4', 'Baseline_Start', 'Baseline_End']] = df.apply(lambda row: Times_Calc(row),
@@ -896,7 +922,7 @@ def P2Predictor(
                 'Air_Mass_Metric', 'Baseline_Weight', 'Transit_Curve_Weight', 'Ingress-Egress_Weight', 'Event_Weight',
                 'Moon_Noise_Metric']] = df.apply(lambda row: EventMetric(row),
                                                  axis=1, result_type='expand')
-            
+
             # Final metrics, then export
             df[f'Final_{metric_mode}'] = df.apply(lambda row: FinalMetric(row), axis=1)
             df = df.drop(columns=f'{filter_name}mag')

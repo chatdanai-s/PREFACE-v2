@@ -176,7 +176,7 @@ def get_LocAndTimezoneStr(scope_df, scope_idx):
 
 
 # Creates lookup tables (LUT) containing local AltAz positions of the Sun and Moon
-# First create a table with 5-min precision, then interpolate for 1-min precision.
+# First create a table with 10-min precision, then interpolate for 1-min precision.
 def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime, obs_end: dt.datetime, Loc):
     LUT_FOLDER = CSV_intermediate_folder / "lut_altaz"
     LUT_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -189,20 +189,20 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
         obs_start_LUT = Time(obs_start - dt.timedelta(days=2), format='datetime', scale='tdb')
         obs_end_LUT = Time(obs_end + dt.timedelta(days=2), format='datetime', scale='tdb')
 
-        timestep_5m = TimeDelta(60*5, format='sec')  # 5-minute sampling
-        n_steps_5m = int(((obs_end_LUT - obs_start_LUT) / timestep_5m).value) + 1
-        obstimes_5m = obs_start_LUT + timestep_5m * np.arange(n_steps_5m)
+        timestep_10m = TimeDelta(60*10, format='sec')  # 10-minute sampling
+        n_steps_10m = int(((obs_end_LUT - obs_start_LUT) / timestep_10m).value) + 1
+        obstimes_10m = obs_start_LUT + timestep_10m * np.arange(n_steps_10m)
 
         timestep_1m = TimeDelta(60, format='sec')    # 1-minute sampling
         n_steps_1m = int(((obs_end_LUT - obs_start_LUT) / timestep_1m).value) + 1
         obstimes_1m = obs_start_LUT + timestep_1m * np.arange(n_steps_1m)
 
-        frame = AltAz(obstime=obstimes_5m, location=Loc)  # Converts from sky frame (RA/Dec) to local observer frame (Alt/Az)
+        frame = AltAz(obstime=obstimes_10m, location=Loc)  # Converts from sky frame (RA/Dec) to local observer frame (Alt/Az)
 
         # Where is the sun at obstimes?
         start = time.time()
 
-        sun = get_sun(obstimes_5m)
+        sun = get_sun(obstimes_10m)
         sun_SkyCoord = SkyCoord(ra=sun.ra, dec=sun.dec, unit="deg", frame='icrs')
         sunaltazs = sun_SkyCoord.transform_to(frame)
 
@@ -212,7 +212,7 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
         # Where is the Moon at obstimes?
         start = time.time()
 
-        moon = get_body("moon", obstimes_5m)
+        moon = get_body("moon", obstimes_10m)
         moon_SkyCoord = SkyCoord(ra=moon.ra, dec=moon.dec, unit="deg", frame='icrs')
         moonaltazs = moon_SkyCoord.transform_to(frame)   # AltAz pairs created for moon
 
@@ -220,8 +220,8 @@ def make_LUT_AltAzs(CSV_intermediate_folder, instrument, obs_start: dt.datetime,
         print(f'>> AltAz pairs created for Moon. ({time_taken:.2f} s)')
 
         # Interpolate altazs
-        sun_alt, sun_az = interpolate_altaz(obstimes_5m, sunaltazs, obstimes_1m)
-        moon_alt, moon_az = interpolate_altaz(obstimes_5m, moonaltazs, obstimes_1m)
+        sun_alt, sun_az = interpolate_altaz(obstimes_10m, sunaltazs, obstimes_1m)
+        moon_alt, moon_az = interpolate_altaz(obstimes_10m, moonaltazs, obstimes_1m)
 
 
         # Build dataframe with these altazs and export
@@ -343,13 +343,15 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
         rf"{config_str}_{metric_mode}-Mode_{viable_cumulative_cut*100}%_Cut_*.csv"
     )
     jobs = list((CSV_intermediate_folder / "phase_2_inputs").glob(filename_pattern))
-    
 
     # Start multiprocessing and wrap with tqdm to get progress bar
     with parallel_config(backend='loky', prefer='processes', inner_max_num_threads=1):
-        for _ in Parallel(n_jobs=cores_actually_used,
-                          pre_dispatch=2*cores_actually_used,
-                          return_as='generator_unordered')(
+        job = Parallel(
+            n_jobs=cores_actually_used,
+            pre_dispatch='all',
+            batch_size=1,
+            return_as='generator_unordered'
+        )(
             delayed(P2_MultiprocessingProcess.P2Predictor)(
                 CSV_core_folder, csv_initiated, output_folder,
                 obs_start, obs_end, scope_df, scope_idx,
@@ -358,8 +360,10 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
                 toggle_graph_outputs, event_weight_graph_threshold,
                 Loc, timezone_str, graph_folder_path,
                 LUT_FILEPATH_ALTAZS, LUT_FILEPATH_MOON
-                ) for csv_initiated in tqdm(jobs, desc="CSVs initiated")
-            ):
+            ) for csv_initiated in jobs
+        )
+
+        for _ in tqdm(job, total=len(jobs), desc="CSVs completed"):
             pass
 
     print(f'+++ Multiprocessing complete! +++')

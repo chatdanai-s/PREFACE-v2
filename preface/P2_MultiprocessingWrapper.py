@@ -345,11 +345,10 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     jobs = list((CSV_intermediate_folder / "phase_2_inputs").glob(filename_pattern))
 
     # Start multiprocessing and wrap with tqdm to get progress bar
-    with parallel_config(backend='loky', prefer='processes', inner_max_num_threads=1):
+    with parallel_config(backend='loky', prefer='processes'):
         job = Parallel(
             n_jobs=cores_actually_used,
             pre_dispatch='all',
-            batch_size=1,
             return_as='generator_unordered'
         )(
             delayed(P2_MultiprocessingProcess.P2Predictor)(

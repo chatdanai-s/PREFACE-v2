@@ -1,4 +1,4 @@
-Built-in Utilities
+Miscellaneous Utilities
 ==================
 
 PREFACE ships with several convenience utilities for inspecting supported

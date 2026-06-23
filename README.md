@@ -74,7 +74,7 @@ MultiprocessingConfigs = MultiprocessingConfigurations(
 run_preface(
     TelescopeConfigurations=TelescopeConfigs,
     OutputConfigurations=OutputConfigs,
-    MoonlightnoiseConfigurations=MoonlightConfigs,
+    MoonlightNoiseConfigurations=MoonlightConfigs,
     MultiprocessingConfigurations=MultiprocessingConfigs
 )
 ```
@@ -83,7 +83,7 @@ run_preface(
 
 ## Documentation
 
-Full documentation (configuration reference, PREFACE output descriptions, and API) is available at **[preface-spearnet.readthedocs.io](https://preface-spearnet.readthedocs.io)**.
+Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface-spearnet.readthedocs.io](https://preface-spearnet.readthedocs.io)**.
 
 ---
 ## Authors

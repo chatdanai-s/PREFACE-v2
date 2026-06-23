@@ -145,7 +145,7 @@ def Cleaner(CSV_intermediate_folder, filename_pattern, output_folder,
         ['Planet', 'Previous Study Flag', f'CumObsScore_{instrument}', f'{instrument}_Event_No', f'{instrument}_Event_No (W>=0.5)', 'Table Position']
     ]
     
-    cumulative_folder = (output_folder / "phase_2" / "cumulative observability scores")
+    cumulative_folder = (output_folder / "phase_2" / "cumulative_observability_scores")
     cumulative_folder.mkdir(parents=True, exist_ok=True)
 
     csv_config_suffix = fullranked_csv_name.removeprefix("Full_Event_List_for_")

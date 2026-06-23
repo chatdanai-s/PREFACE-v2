@@ -41,6 +41,6 @@ MultiprocessingConfigs = MultiprocessingConfigurations(
 
 run_preface(TelescopeConfigurations=TelescopeConfigs,
             OutputConfigurations=OutputConfigs,
-            MoonlightnoiseConfigurations=MoonlightConfigs,
+            MoonlightNoiseConfigurations=MoonlightConfigs,
             MultiprocessingConfigurations=MultiprocessingConfigs)
 

@@ -146,10 +146,17 @@ def open_aggregated_aeronet_csv():
 
 
 ##### Main preface function #####
-def run_preface(TelescopeConfigurations: TelescopeConfigurations,
-                OutputConfigurations: OutputConfigurations,
-                MoonlightnoiseConfigurations: MoonlightNoiseConfigurations,
-                MultiprocessingConfigurations: MultiprocessingConfigurations):
+def run_preface(
+    TelescopeConfigurations: TelescopeConfigurations,
+    OutputConfigurations: OutputConfigurations,
+    MoonlightNoiseConfigurations: MoonlightNoiseConfigurations | None = None,
+    MultiprocessingConfigurations: MultiprocessingConfigurations | None = None,
+):
+    if MoonlightNoiseConfigurations is None:
+        MoonlightNoiseConfigurations = MoonlightNoiseConfigurations()
+    if MultiprocessingConfigurations is None:
+        MultiprocessingConfigurations = MultiprocessingConfigurations()
+
     """
     Execute the complete PREFACE processing pipeline.
 
@@ -184,7 +191,7 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
     # Unpack variables (Some unused variables left for code readability)
     instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus = TelescopeConfigurations.unpack
     obs_start, obs_end, output_folder, metric_mode, viable_cumulative_cut, toggle_graph_outputs, event_weight_graph_threshold = OutputConfigurations.unpack
-    toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor = MoonlightnoiseConfigurations.unpack
+    toggle_moonlight_noise, scattering_aod, absorption_aod, asymmetry_factor, moonlight_amplification_factor = MoonlightNoiseConfigurations.unpack
     toggle_multiprocessing, total_cores, cores_to_leave_out, cores_used = MultiprocessingConfigurations.unpack
 
     scope_idx = np.where(scope_df['Telescope'] == instrument)[0][0]
@@ -221,7 +228,7 @@ def run_preface(TelescopeConfigurations: TelescopeConfigurations,
     filename_pattern, cores_actually_used = P2_MultiprocessingWrapper.P2Wrap(
         CSV_core_folder, CSV_intermediate_folder, output_folder,
         scope_df, scope_idx, *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,
-        *MoonlightnoiseConfigurations.unpack,
+        *MoonlightNoiseConfigurations.unpack,
         toggle_graph_outputs, event_weight_graph_threshold,
         obs_start, obs_end,
         toggle_multiprocessing, cores_used

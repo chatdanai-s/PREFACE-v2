@@ -37,7 +37,7 @@ class TelescopeConfigurations:
         filter_name: str,
         run_mode: str,
         toggle_sky_noise=True,
-        toggle_defocus=True
+        toggle_defocus=False
     ):
         """
         Initialize and validate telescope-specific configuration parameters
@@ -54,7 +54,7 @@ class TelescopeConfigurations:
             ``"Spectral_Half_Well"``, or ``"IR_Half_Well"``.
         toggle_sky_noise : bool, default=True
             Whether to include sky background noise in calculations.
-        toggle_defocus : bool, default=True
+        toggle_defocus : bool, default=False
             Whether to apply telescope defocus modelling when available.
 
         Returns

@@ -18,6 +18,7 @@ ranked observing opportunities for transit follow-up campaigns.
    quickstart
    configuration
    outputs
+   workflow
    utilities
    api
 

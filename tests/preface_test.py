@@ -23,7 +23,7 @@ OutputConfigs = OutputConfigurations(
     observation_end=ObsEnd,
     output_folder=outputFolder,
     metric_mode='Rank',
-    viable_cumulative_cut=0.97,
+    viable_cumulative_cut=0.90,
     toggle_graph_outputs=True,
     event_weight_graph_threshold=0.75
 )

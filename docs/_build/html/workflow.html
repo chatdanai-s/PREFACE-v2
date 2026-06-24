@@ -1,0 +1,349 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PREFACE Workflow &mdash; PREFACE 2.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=51b770b3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Miscellaneous Utilities" href="utilities.html" />
+    <link rel="prev" title="Outputs" href="outputs.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PREFACE
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="outputs.html">Outputs</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">PREFACE Workflow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#phase-one">Phase One</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#step-1-modcheck">Step 1: <code class="docutils literal notranslate"><span class="pre">ModCheck</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-2-impactmerger">Step 2: <code class="docutils literal notranslate"><span class="pre">ImpactMerger</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-3-exoplanetseuimpactmerger">Step 3: <code class="docutils literal notranslate"><span class="pre">ExoplanetseuImpactMerger</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-4-workingtepsetbuilder">Step 4: <code class="docutils literal notranslate"><span class="pre">WorkingTEPSetBuilder</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-5-rankmaker">Step 5: <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-6-cutter">Step 6: <code class="docutils literal notranslate"><span class="pre">Cutter</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#step-7-viabilitysplitter">Step 7: <code class="docutils literal notranslate"><span class="pre">ViabilitySplitter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#phase-two">Phase Two</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utilities.html">Miscellaneous Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PREFACE</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">PREFACE Workflow</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/workflow.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="preface-workflow">
+<h1>PREFACE Workflow<a class="headerlink" href="#preface-workflow" title="Link to this heading"></a></h1>
+<p>This page describes the internal processing pipeline executed by <code class="xref py py-func docutils literal notranslate"><span class="pre">run_preface()</span></code>.
+The pipeline is divided into two broad phases: <strong>Phase One</strong> selects the most promising
+exoplanet targets by applying a selection metric, and <strong>Phase Two</strong> determines when those
+targets are observable from the chosen telescope location. The final output is a ranked
+list of transit events to direct observing efforts.</p>
+<p>The sections below describe each processing step in the order it is executed.</p>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#phase-one" id="id1">Phase One</a></p></li>
+<li><p><a class="reference internal" href="#phase-two" id="id2">Phase Two</a></p></li>
+</ul>
+</nav>
+<hr class="docutils" />
+<section id="phase-one">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Phase One</a><a class="headerlink" href="#phase-one" title="Link to this heading"></a></h2>
+<p>Phase One produces a ranked, instrument-specific subset of TEPCat planets deemed viable
+for transmission spectroscopy. It proceeds through seven steps:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ModCheck</span></code>: Assembles the TEPCat exoplanet catalogue</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ModCheck</span></code>: Recovers literature impact parameters from exoplanets.org</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ExoplanetseuImpactMerger</span></code>: Recovers literature impact parameters from exoplanets.eu</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WorkingTEPSetBuilder</span></code>: Calculates all remaining telescope- and time-independent parameters for selection metric calculation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RankMaker</span></code>: Calculates the selection metric for each planet from the working TEPCat dataset</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Cutter</span></code>: Calculates the metric cutoff threshold, where planets with the metric lower than the threshold are deemed “non-viable”</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ViabilitySplitter</span></code>: Divides full ranked catalogue into two output catalogues deemed “viable” and “non-viable”</p></li>
+</ul>
+<section id="step-1-modcheck">
+<h3>Step 1: <code class="docutils literal notranslate"><span class="pre">ModCheck</span></code><a class="headerlink" href="#step-1-modcheck" title="Link to this heading"></a></h3>
+<p>The input catalogue is primarily drawn from the Transiting ExoPlanet Catalogue (TEPCat), maintained
+by Dr John Southworth at Keele University. TEPCat was selected over alternatives such as
+exoplanets.eu for two reasons critical to pipeline operation: it provides transit durations
+(<span class="math notranslate nohighlight">\(t_{14}\)</span>) for every entry, which is absent from most other catalogues yet
+essential for Phase Two transit predictions, and it provides complete mid-transit ephemerides in BJD<sub>TDB</sub>,
+which enables accurate prediction of future transit times.</p>
+<p>TEPCat is distributed as three separate files:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">allplanets-csv.csv</span></code>: well-studied objects with full parameter sets.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kepplanets-csv.csv</span></code>: less-studied objects, typically faint Kepler targets.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">observables.csv</span></code>: coordinates, magnitudes, ephemerides, durations, and depths for
+all planets in both of the above files.</p></li>
+</ul>
+<p>First, <code class="docutils literal notranslate"><span class="pre">ModCheck</span></code> checks the modification timestamp of each local copy. If any file is older than
+seven days, an updated version is downloaded from the TEPCat website before proceeding.
+Then, the three files are read into <code class="docutils literal notranslate"><span class="pre">pandas</span></code> DataFrames, cleaned, and concatenated into a single
+working table with consistent column headers. Any planet entry missing either transit duration (<span class="math notranslate nohighlight">\(t_{14}\)</span>)
+or transit depth (<span class="math notranslate nohighlight">\(\delta\)</span>) is removed, as both quantities are required at multiple downstream stages.
+Brown dwarf entries are also excluded. Finally, the cleaned catalogue is saved as <code class="docutils literal notranslate"><span class="pre">FullTEPSet.csv</span></code> and passed to the next step.</p>
+</section>
+<section id="step-2-impactmerger">
+<h3>Step 2: <code class="docutils literal notranslate"><span class="pre">ImpactMerger</span></code><a class="headerlink" href="#step-2-impactmerger" title="Link to this heading"></a></h3>
+<p>The impact parameter <span class="math notranslate nohighlight">\(b\)</span> is not provided by TEPCat’s standard data files, yet it is
+required by Phase Two’s transit geometry model. This step performs a first-pass recovery by
+cross-matching <code class="docutils literal notranslate"><span class="pre">FullTEPSet.csv</span></code> against the Exoplanet Orbit Database (exoplanets.org),
+which was found to hold the largest number of literature <span class="math notranslate nohighlight">\(b\)</span>-values at the time of
+original pipeline development. Planet names are normalised between the two
+catalogues to ensure consistent matching, and very planet that appears in both catalogues
+receives its literature impact parameter at this stage. The result is written out as
+<code class="docutils literal notranslate"><span class="pre">FullTEPSetWithExoOrgImpacts.csv</span></code>.</p>
+</section>
+<section id="step-3-exoplanetseuimpactmerger">
+<h3>Step 3: <code class="docutils literal notranslate"><span class="pre">ExoplanetseuImpactMerger</span></code><a class="headerlink" href="#step-3-exoplanetseuimpactmerger" title="Link to this heading"></a></h3>
+<p>For planets still missing <span class="math notranslate nohighlight">\(b\)</span> after Step 2, a second cross-match is performed
+against a snapshot of the exoplanets.eu catalogue. Although this catalogue holds fewer
+<span class="math notranslate nohighlight">\(b\)</span>-values overall, it tends to be more up to date for recent discoveries. Planets
+appearing in both catalogues receive their impact parameters in this pass. The updated
+catalogue is saved as <code class="docutils literal notranslate"><span class="pre">FullTEPSetWithAllImpacts.csv</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>At the time of initial deployment (September 2017), this two-pass recovery successfully retrieved
+literature impact parameters for 1,213 of 1,451 TEPCat entries (83.6%). The two
+external catalogue snapshots are static; the recovery rate may decline gradually as
+TEPCat continues to be updated with new discoveries.</p>
+</div>
+</section>
+<section id="step-4-workingtepsetbuilder">
+<h3>Step 4: <code class="docutils literal notranslate"><span class="pre">WorkingTEPSetBuilder</span></code><a class="headerlink" href="#step-4-workingtepsetbuilder" title="Link to this heading"></a></h3>
+<p>At this stage, the catalogue contains all available literature parameters but is still
+missing several quantities required by the metric and by Phase Two. <code class="docutils literal notranslate"><span class="pre">WorkingTEPSetBuilder</span></code>
+derives these internally.</p>
+<p><strong>Stellar magnitudes.</strong> TEPCat provides V- and K-band magnitudes for parent stars, but
+many instruments use filters outside these bands. Magnitudes in U, B, R, and I are
+recovered by applying published spectral type conversion tables (Mamajek 2017; Pecaut &amp;
+Mamajek 2013) to each star’s effective temperature and V-band magnitude. Sloan <span class="math notranslate nohighlight">\(g\)</span>,
+<span class="math notranslate nohighlight">\(r\)</span>, <span class="math notranslate nohighlight">\(i\)</span>, and <span class="math notranslate nohighlight">\(z\)</span> magnitudes are recovered using the empirical colour
+transformations of Jordi et al. (2007). Specialist longpass filters (e.g. the Liverpool
+Telescope RISE 720 nm filter) are handled using a flux-additivity approximation.</p>
+<p><strong>Semi-major axis.</strong> Where not already present, the semi-major axis is computed from
+Kepler’s Third Law:</p>
+<div class="math notranslate nohighlight">
+\[a = \left( \frac{P^2\, M_*}{M_\odot} \right)^{1/3}\]</div>
+<p>where <span class="math notranslate nohighlight">\(P\)</span> is the orbital period in years and <span class="math notranslate nohighlight">\(M_*\)</span> is the stellar mass in
+solar masses. The result is expressed in AU.</p>
+<p><strong>Equilibrium temperature.</strong> Planet equilibrium temperatures are computed assuming zero
+Bond albedo:</p>
+<div class="math notranslate nohighlight">
+\[T_\mathrm{eq} = T_\mathrm{eff} \cdot \sqrt{\frac{R_*}{2a}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(T_\mathrm{eff}\)</span> is the stellar effective temperature and <span class="math notranslate nohighlight">\(R_*\)</span> is the
+stellar radius expressed in AU.</p>
+<p><strong>Remaining impact parameters.</strong> For the minority of planets for which <span class="math notranslate nohighlight">\(b\)</span> could
+not be recovered from either external catalogue in Steps 2-3, an estimate is computed
+analytically using the transit geometry model of Seager &amp; Mallén-Ornelas (2003):</p>
+<div class="math notranslate nohighlight">
+\[b = \sqrt{
+     \left(
+         \frac {1 + \frac{R_p}{R_*}} {\cos \left[ \frac{\pi t_{14}}{P} \right] }
+     \right)^2
+    - \left(
+         \frac{a}{R_*} \tan \left[ \frac{\pi t_{14}}{P} \right]
+     \right)^2
+}\]</div>
+<p><strong>Planet mass estimation.</strong> Planetary masses cannot be derived using transit parameters alone, yet
+mass is required by the metric calculation for planets. For planets lacking a literature mass, PREFACE
+estimates <span class="math notranslate nohighlight">\(M_p\)</span> from the planet’s radius using the continuous mass-radius-temperature
+relation of Edmondson et al. (2023). The relation is implemented in three regimes,
+determined by the planet radius <span class="math notranslate nohighlight">\(R_p\)</span> expressed in Earth radii:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21.7%" />
+<col style="width: 34.8%" />
+<col style="width: 43.5%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Regime</p></th>
+<th class="head"><p>Condition</p></th>
+<th class="head"><p>Power-law applied</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Rocky</p></td>
+<td><p><span class="math notranslate nohighlight">\(R_p &lt; 1.580 \,R_\oplus\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(M_p = \left(R_p / 1.01\right)^{1/0.28}\,M_\oplus\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>Neptunian</p></td>
+<td><p><span class="math notranslate nohighlight">\(1.580 \leq R_p &lt; 9.683\,R_\oplus\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(M_p = \left(R_p / 0.53\right)^{1/0.68}\,M_\oplus\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>Jovian (degenerate)</p></td>
+<td><p><span class="math notranslate nohighlight">\(R_p \geq 9.683\,R_\oplus\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(M_p = 71.70\,M_\oplus\)</span></p></td>
+</tr>
+</tbody>
+</table>
+<p>The Neptunian-Jovian boundary is defined as the radius at which the mass-radius relation becomes degenerate for a Jovian planet
+with an equilibrium temperature of <span class="math notranslate nohighlight">\(T_\mathrm{eq} = 500\,\mathrm{K}\)</span>. Beyond this radius, planets of very different masses occupy
+similar radii and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate is given.
+The final estimated mass is then converted from Earth masses to Jupiter masses before being stored.</p>
+</section>
+<section id="step-5-rankmaker">
+<h3>Step 5: <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code><a class="headerlink" href="#step-5-rankmaker" title="Link to this heading"></a></h3>
+<p>For each planet in the working catalogue, <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code> uses the chosen instrument’s detector properties to
+compute an optimum exposure time and an approximate signal-to-noise ratio per planet.
+These quantities are used to evaluate the Phase One selection metric, which ranks planets
+by their expected spectroscopic return for the given instrument and filter combination.</p>
+<p>Metric scores are computed for all four available metric modes simultaneously:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Rank</span></code>: the standard photometric transmission spectroscopy metric.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Habitable_Rank</span></code>: the standard metric restricted to planets in or near the habitable
+zone of their host star.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Multi_Transit_Rank</span></code>: a metric weighted towards planets with frequent transits,
+suited to long-term monitoring campaigns.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Multi_Transit_Habitable_Rank</span></code>: the habitable-zone variant of the multi-transit
+metric.</p></li>
+</ul>
+<p>The full catalogue is sorted by the standard <code class="docutils literal notranslate"><span class="pre">Rank</span></code> score from highest to lowest and
+saved as a ranked CSV. All four metric columns are retained so that the user can switch
+metric mode (via <code class="docutils literal notranslate"><span class="pre">metric_mode</span></code>) without rerunning Phase One from scratch.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Exposure times and SNR values produced at this step are meaningful only in a relative
+sense. They are proportionality estimates used for ranking and are not a substitute for
+a dedicated exposure-time calculator when planning actual observations.</p>
+</div>
+</section>
+<section id="step-6-cutter">
+<h3>Step 6: <code class="docutils literal notranslate"><span class="pre">Cutter</span></code><a class="headerlink" href="#step-6-cutter" title="Link to this heading"></a></h3>
+<p>Because the Phase One metric is a proportionality rather than an absolute physical
+quantity, a fixed, physically motivated viability threshold cannot be defined. Instead,
+PREFACE uses the cumulative distribution of rank scores for a reference calibration
+instrument to place a data-driven cut.</p>
+<p>VLT/FORS2 (600RI+19 grism) is chosen as the calibration instrument for spectroscopy,
+because they access the largest viable subsets of targets, making the calibration cut
+as inclusive as possible. No corresponding calibration instrument is defined for photometry.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Cutter</span></code> evaluates the cumulative rank-score distribution for the calibration instrument
+and identifies the minimum absolute rank score at which the cumulative fraction equals
+<code class="docutils literal notranslate"><span class="pre">viable_cumulative_cut</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">0.97</span></code>). This threshold score is returned and passed
+to the ViabilitySplitter.</p>
+</section>
+<section id="step-7-viabilitysplitter">
+<h3>Step 7: <code class="docutils literal notranslate"><span class="pre">ViabilitySplitter</span></code><a class="headerlink" href="#step-7-viabilitysplitter" title="Link to this heading"></a></h3>
+<p>Using the threshold score from the Cutter, <code class="docutils literal notranslate"><span class="pre">ViabilitySplitter</span></code> divides the full ranked
+catalogue into two output files:</p>
+<ul class="simple">
+<li><p><strong>Viable targets</strong>: planets scoring at or above the threshold for the user’s chosen
+instrument. These are passed to Phase Two for transit scheduling.</p></li>
+<li><p><strong>Non-viable targets</strong>: planets below the threshold. These are written to the
+<code class="docutils literal notranslate"><span class="pre">nonviable_target_list/</span></code> output directory for reference but take no further part in
+the pipeline.</p></li>
+</ul>
+<p>Both files are saved to the <code class="docutils literal notranslate"><span class="pre">phase_1/</span></code> output directory. The number of viable targets
+depends on both the chosen instrument and the value of <code class="docutils literal notranslate"><span class="pre">viable_cumulative_cut</span></code>; a cut
+of <code class="docutils literal notranslate"><span class="pre">0.90</span></code> to <code class="docutils literal notranslate"><span class="pre">0.97</span></code> is recommended as it captures all planets in the productive upper
+“knee” of the cumulative distribution while excluding the long low-viability tail.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="phase-two">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Phase Two</a><a class="headerlink" href="#phase-two" title="Link to this heading"></a></h2>
+<p>Phase Two takes the viable target list produced by Phase One and returns a ranked schedule
+of observable transit events within the user-specified observing window. For each planet,
+it propagates the transit ephemeris forward, evaluates every predicted event against
+astronomical night and altitude constraints, scores each observable event using an airmass-
+weighted transit coverage model and a moonlight noise model, and combines these with the
+Phase One metric score to produce a final event weight.</p>
+<p>Phase Two is the most computationally intensive stage of the pipeline, running at
+approximately 1-2 seconds per transit event for a viable target list of ~1000 planets in
+an 8-month observation window. Mltiprocessing is applied at this stage using <code class="docutils literal notranslate"><span class="pre">joblib</span></code>,
+distributing the workload across available CPU cores as configured by
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiprocessingConfigurations</span></code>.</p>
+<p>(Under Construction!)</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="outputs.html" class="btn btn-neutral float-left" title="Outputs" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="utilities.html" class="btn btn-neutral float-right" title="Miscellaneous Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, PREFACE Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

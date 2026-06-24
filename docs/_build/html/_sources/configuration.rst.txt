@@ -83,7 +83,7 @@ Defines the observation timing window, output directory, and ranking behaviour.
         observation_end=dt.datetime(2026, 5, 31),
         output_folder=r"C:\PREFACE_Output",
         metric_mode="Rank",
-        viable_cumulative_cut=0.97,
+        viable_cumulative_cut=0.90,
         toggle_graph_outputs=True,
         event_weight_graph_threshold=0.75
     )
@@ -120,8 +120,8 @@ Defines the observation timing window, output directory, and ranking behaviour.
    * - ``viable_cumulative_cut``
      - ``float``
      - Fraction of cumulative viability retained.
-     - Between ``0`` and ``1`` (``0.970`` or ``0.985`` recommended).
-     - ``0.97``
+     - Between ``0`` and ``1`` (``0.90`` to ``0.97`` recommended).
+     - ``0.90``
    * - ``toggle_graph_outputs``
      - ``bool``
      - Produce diagnostic plots per transit.

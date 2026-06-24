@@ -54,8 +54,9 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="outputs.html">Outputs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="utilities.html">Built-in Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflow.html">PREFACE Workflow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utilities.html">Miscellaneous Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>
 
         </div>
@@ -177,7 +178,7 @@ will stop and report accordingly if an unsupported combination is detected.</p>
     <span class="n">observation_end</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span>
     <span class="n">output_folder</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;C:\PREFACE_Output&quot;</span><span class="p">,</span>
     <span class="n">metric_mode</span><span class="o">=</span><span class="s2">&quot;Rank&quot;</span><span class="p">,</span>
-    <span class="n">viable_cumulative_cut</span><span class="o">=</span><span class="mf">0.97</span><span class="p">,</span>
+    <span class="n">viable_cumulative_cut</span><span class="o">=</span><span class="mf">0.90</span><span class="p">,</span>
     <span class="n">toggle_graph_outputs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">event_weight_graph_threshold</span><span class="o">=</span><span class="mf">0.75</span>
 <span class="p">)</span>
@@ -227,8 +228,8 @@ will stop and report accordingly if an unsupported combination is detected.</p>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">viable_cumulative_cut</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
 <td><p>Fraction of cumulative viability retained.</p></td>
-<td><p>Between <code class="docutils literal notranslate"><span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">1</span></code> (<code class="docutils literal notranslate"><span class="pre">0.970</span></code> or <code class="docutils literal notranslate"><span class="pre">0.985</span></code> recommended).</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">0.97</span></code></p></td>
+<td><p>Between <code class="docutils literal notranslate"><span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">1</span></code> (<code class="docutils literal notranslate"><span class="pre">0.90</span></code> to <code class="docutils literal notranslate"><span class="pre">0.97</span></code> recommended).</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.90</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">toggle_graph_outputs</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>

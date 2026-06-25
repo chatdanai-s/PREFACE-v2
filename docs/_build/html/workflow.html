@@ -93,7 +93,7 @@
              
   <section id="preface-workflow">
 <h1>PREFACE Workflow<a class="headerlink" href="#preface-workflow" title="Link to this heading"></a></h1>
-<p>This page describes the internal processing pipeline executed by <code class="xref py py-func docutils literal notranslate"><span class="pre">run_preface()</span></code>.
+<p>This page describes the internal processing pipeline executed by <a class="reference internal" href="api.html#preface.run_preface" title="preface.run_preface"><code class="xref py py-func docutils literal notranslate"><span class="pre">run_preface()</span></code></a>.
 The pipeline is divided into two broad phases: <strong>Phase One</strong> selects the most promising
 exoplanet targets by applying a selection metric, and <strong>Phase Two</strong> determines when those
 targets are observable from the chosen telescope location. The final output is a ranked
@@ -307,10 +307,10 @@ astronomical night and altitude constraints, scores each observable event using 
 weighted transit coverage model and a moonlight noise model, and combines these with the
 Phase One metric score to produce a final event weight.</p>
 <p>Phase Two is the most computationally intensive stage of the pipeline, running at
-approximately 1-2 seconds per transit event for a viable target list of ~1000 planets in
+approximately 1-2 seconds per target for a viable target list of ~1000 planets in
 an 8-month observation window. Mltiprocessing is applied at this stage using <code class="docutils literal notranslate"><span class="pre">joblib</span></code>,
 distributing the workload across available CPU cores as configured by
-<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiprocessingConfigurations</span></code>.</p>
+<a class="reference internal" href="api.html#preface.configs.MultiprocessingConfigurations" title="preface.configs.MultiprocessingConfigurations"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiprocessingConfigurations</span></code></a>.</p>
 <p>(Under Construction!)</p>
 </section>
 </section>
@@ -326,7 +326,7 @@ distributing the workload across available CPU cores as configured by
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2025, PREFACE Authors.</p>
+    <p>&#169; Copyright 2025 - Present, Chatdanai Sawangwong and contributors..</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

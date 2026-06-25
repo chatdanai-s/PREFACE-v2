@@ -6,8 +6,6 @@
 
 ## To-do List
 As this project is work in progress, here is the current to-do list:
-- [ ] Make PREFACE pip-installable
-- [ ] Proper credit attribution
 - [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
 - [ ] Finish documentation
 - [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
@@ -16,7 +14,7 @@ As this project is work in progress, here is the current to-do list:
 
 ---
 
-## Installation (WIP)
+## Installation
 
 Install the latest stable release from PyPI:
 ```bash
@@ -35,6 +33,8 @@ Using `preface` consists of four steps:
 4. Execute the complete pipeline with `run_preface()`.
 
 Input validation is performed automatically before pipeline execution.
+
+Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface-spearnet.readthedocs.io](https://preface-spearnet.readthedocs.io)**.
 
 ### Example
 
@@ -92,22 +92,21 @@ run_preface(
 ```
 
 ---
-
-## Documentation (WIP)
-
-Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface-spearnet.readthedocs.io](https://preface-spearnet.readthedocs.io)**.
-
----
 ## Authors
 
-**Name 1**
-Affilation 1
+**Jake Staberg Morgan** (Original author)
 
-**Name 2**
-Affilation 2
+**Chatdanai Sawangwong** (Current maintainer)\
+email: chatdanai.saw@gmail.com
 
-**Chatdanai Sawangwong**
-Affilation 3
+**Supachai Awiphan**\
+email: supachai@narit.or.th
+
+**Orarik Tasuya**\
+email: orarik@narit.or.th
+
+**Napaporn A-thano**\
+email: napaporn@narit.or.th
 
 <!-- ---
 

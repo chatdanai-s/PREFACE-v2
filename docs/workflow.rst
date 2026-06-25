@@ -232,7 +232,7 @@ weighted transit coverage model and a moonlight noise model, and combines these 
 Phase One metric score to produce a final event weight.
 
 Phase Two is the most computationally intensive stage of the pipeline, running at
-approximately 1-2 seconds per transit event for a viable target list of ~1000 planets in
+approximately 1-2 seconds per target for a viable target list of ~1000 planets in
 an 8-month observation window. Mltiprocessing is applied at this stage using ``joblib``,
 distributing the workload across available CPU cores as configured by
 :class:`~preface.configs.MultiprocessingConfigurations`.

@@ -1,14 +1,14 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0,<69.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "preface-spearnet"
-version = "2.0.0b1"
+name = "preface_spearnet"
+version = "2.0.0b3"
 description = "An Automated Pipeline for the Selection of Transmission Spectroscopy Candidates"
 readme = "README.md"
 requires-python = ">=3.9"
-license = "MIT"
+license = { text = "MIT"}
 
 keywords = [
   "astronomy",
@@ -22,30 +22,28 @@ keywords = [
 
 classifiers = [
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
 
 authors = [
   { name = "Chatdanai Sawangwong", email = "chatdanai.saw@gmail.com" },
-  { name = "Author 2", email = "author2@example.com" },
-  { name = "Author 4", email = "author4@example.com" },
-  { name = "Author 5", email = "author5@example.com" }
+  { name = "Supachai Awiphan", email = "supachai@narit.or.th" },
+  { name = "Orarik Tasuya", email = "orarik@narit.or.th" },
+  { name = "Napaporn A-thano", email = "napaporn@narit.or.th" }
 ]
 
 dependencies = [
   "numpy>=2.1.0",
-  "pandas>=3.0.3",
+  "pandas>=2.2.3",
   "matplotlib>=3.9.2",
-  "astropy>=7.2.0",
-  "scipy>=1.14.1",
+  "astropy>=7.1.0",
+  "scipy>=1.13.1",
   "python-dateutil>=2.9.0",
-  "joblib>=1.5.3",
+  "joblib>=1.4.2",
   "tqdm>=4.67.0",
   "ephem>=4.2.1",
   "timezonefinder>=8.2.4",
-  "pyarrow>=24.0.0",
+  "pyarrow>=24.0.0"
 ]
 
 [project.urls]
@@ -57,5 +55,11 @@ BugTracker = "https://github.com/chatdanai-s/PREFACE/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["preface*"]
-exclude = ["tests"]
+include = ["preface*",]
+exclude = ["__pycache__", "tests", "docs"]
+
+[tool.setuptools.package-data]
+preface = [
+    "csvbank/core/*",
+    "supplementary_files/*.pdf",
+]

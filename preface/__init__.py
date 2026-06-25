@@ -59,7 +59,7 @@ def get_available_filters_list(instrument: str):
     ----------
     instrument : str
         Name of the telescope or instrument as listed in ``Scope.csv``.
-        See preface.telescope_list for list of available telescopes.
+        See ``preface.telescope_list`` for list of available telescopes.
 
     Returns
     -------
@@ -152,11 +152,6 @@ def run_preface(
     MoonlightNoiseConfigurations: MoonlightNoiseConfigurations | None = None,
     MultiprocessingConfigurations: MultiprocessingConfigurations | None = None,
 ):
-    if MoonlightNoiseConfigurations is None:
-        MoonlightNoiseConfigurations = MoonlightNoiseConfigurations()
-    if MultiprocessingConfigurations is None:
-        MultiprocessingConfigurations = MultiprocessingConfigurations()
-
     """
     Execute the complete PREFACE processing pipeline.
 
@@ -188,6 +183,12 @@ def run_preface(
     None
     """
 
+    # Set default setting if no input
+    if MoonlightNoiseConfigurations is None:
+        MoonlightNoiseConfigurations = MoonlightNoiseConfigurations()
+    if MultiprocessingConfigurations is None:
+        MultiprocessingConfigurations = MultiprocessingConfigurations()
+    
     # Unpack variables (Some unused variables left for code readability)
     instrument, filter_name, run_mode, toggle_sky_noise, toggle_defocus = TelescopeConfigurations.unpack
     obs_start, obs_end, output_folder, metric_mode, viable_cumulative_cut, toggle_graph_outputs, event_weight_graph_threshold = OutputConfigurations.unpack

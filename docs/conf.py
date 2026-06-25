@@ -3,8 +3,8 @@ import sys
 
 # -- Project information -----------------------------------------------------
 project = "PREFACE"
-copyright = "2025, PREFACE Authors"
-author = "PREFACE Authors"
+copyright = "2025 - Present, Chatdanai Sawangwong and contributors."
+author = "Chatdanai Sawangwong and contributors."
 release = "2.0.0"
 
 # -- General configuration ---------------------------------------------------

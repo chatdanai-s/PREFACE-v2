@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "preface-spearnet"
-version = "2.0.0"
+version = "2.0.0b1"
 description = "An Automated Pipeline for the Selection of Transmission Spectroscopy Candidates"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -28,13 +28,10 @@ classifiers = [
 ]
 
 authors = [
-  { name = "Author 1", email = "author1@example.com" },
-  { name = "Author 2", email = "author2@example.com" },
   { name = "Chatdanai Sawangwong", email = "chatdanai.saw@gmail.com" },
+  { name = "Author 2", email = "author2@example.com" },
   { name = "Author 4", email = "author4@example.com" },
-  { name = "Author 5", email = "author5@example.com" },
-  { name = "Author 6", email = "author6@example.com" },
-  { name = "Author 7", email = "author7@example.com" }
+  { name = "Author 5", email = "author5@example.com" }
 ]
 
 dependencies = [

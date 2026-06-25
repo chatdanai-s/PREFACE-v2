@@ -4,7 +4,19 @@
 
 ---
 
-## Installation
+## To-do List
+As this project is work in progress, here is the current to-do list:
+- [ ] Make PREFACE pip-installable
+- [ ] Proper credit attribution
+- [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
+- [ ] Finish documentation
+- [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
+- [ ] (Maybe) Reduce multiprocessing overhead
+- [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
+
+---
+
+## Installation (WIP)
 
 Install the latest stable release from PyPI:
 ```bash
@@ -81,7 +93,7 @@ run_preface(
 
 ---
 
-## Documentation
+## Documentation (WIP)
 
 Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface-spearnet.readthedocs.io](https://preface-spearnet.readthedocs.io)**.
 
@@ -97,7 +109,7 @@ Affilation 2
 **Chatdanai Sawangwong**
 Affilation 3
 
----
+<!-- ---
 
 ## Citation
 
@@ -123,4 +135,4 @@ If you use **PREFACE** in academic work, please cite the associated publications
   month        = nov,
   url          = {https://research.manchester.ac.uk/en/studentTheses/spearnet-a-pilot-exoplanet-transmission-spectroscopy-survey}
 }
-```
+``` -->

@@ -18,11 +18,11 @@ The sections below describe each processing step in the order it is executed.
 Phase One
 ---------------------------
 
-Phase One produces a ranked, instrument-specific subset of TEPCat planets deemed viable
+Phase One produces a ranked subset of TEPCat planets deemed viable
 for transmission spectroscopy. It proceeds through seven steps:
 
 - ``ModCheck``: Assembles the TEPCat exoplanet catalogue
-- ``ModCheck``: Recovers literature impact parameters from exoplanets.org
+- ``ImpactMerger``: Recovers literature impact parameters from exoplanets.org
 - ``ExoplanetseuImpactMerger``: Recovers literature impact parameters from exoplanets.eu
 - ``WorkingTEPSetBuilder``: Calculates all remaining telescope- and time-independent parameters for selection metric calculation
 - ``RankMaker``: Calculates the selection metric for each planet from the working TEPCat dataset
@@ -61,7 +61,7 @@ required by Phase Two's transit geometry model. This step performs a first-pass 
 cross-matching ``FullTEPSet.csv`` against the Exoplanet Orbit Database (exoplanets.org),
 which was found to hold the largest number of literature :math:`b`-values at the time of
 original pipeline development. Planet names are normalised between the two
-catalogues to ensure consistent matching, and very planet that appears in both catalogues 
+catalogues to ensure consistent matching, and every planet that appears in both catalogues 
 receives its literature impact parameter at this stage. The result is written out as
 ``FullTEPSetWithExoOrgImpacts.csv``.
 
@@ -69,7 +69,7 @@ Step 3: ``ExoplanetseuImpactMerger``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For planets still missing :math:`b` after Step 2, a second cross-match is performed
-against a snapshot of the exoplanets.eu catalogue. Although this catalogue holds fewer
+against a snapshot of the exoplanets.eu catalogue (currently 24 June, 2026). Although this catalogue holds fewer
 :math:`b`-values overall, it tends to be more up to date for recent discoveries. Planets
 appearing in both catalogues receive their impact parameters in this pass. The updated
 catalogue is saved as ``FullTEPSetWithAllImpacts.csv``.
@@ -155,8 +155,8 @@ determined by the planet radius :math:`R_p` expressed in Earth radii:
  
 The Neptunian-Jovian boundary is defined as the radius at which the mass-radius relation becomes degenerate for a Jovian planet
 with an equilibrium temperature of :math:`T_\mathrm{eq} = 500\,\mathrm{K}`. Beyond this radius, planets of very different masses occupy
-similar radii and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate is given.
-The final estimated mass is then converted from Earth masses to Jupiter masses before being stored.
+similar radii and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate
+at the boundary is given. The final estimated mass is then converted from Earth masses to Jupiter masses before being stored.
 
 Step 5: ``RankMaker``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,11 +168,30 @@ by their expected spectroscopic return for the given instrument and filter combi
 
 Metric scores are computed for all four available metric modes simultaneously:
 
-- ``Rank``: the standard photometric transmission spectroscopy metric.
+- ``Rank``: the standard photometric transmission spectroscopy metric as derived by Morgan et al. (2019):
+
+.. math::
+
+   \cal D = C_{T}(\lambda) 10^{-0.2m_*} t_{14} \frac{T_{\rm eq} \rp \delta}{M_{\rm p}}
+
+where
+
+.. math::
+
+   C_{T}(\lambda) = N_\lambda^{-1/2} 10^{0.2 m_{\rm zp}}\left( \frac{\texp}{\texp + \tov} \right)^{1/2}
+  
+
+contains all telescope-dependent variables.
+
 - ``Habitable_Rank``: the standard metric restricted to planets in or near the habitable
   zone of their host star.
 - ``Multi_Transit_Rank``: a metric weighted towards planets with frequent transits,
-  suited to long-term monitoring campaigns.
+  suited to long-term monitoring campaigns:
+
+.. math::
+
+    \cal D_\text{multi} = \cal D \cdot P^{-1/2}
+
 - ``Multi_Transit_Habitable_Rank``: the habitable-zone variant of the multi-transit
   metric.
 
@@ -237,7 +256,69 @@ an 8-month observation window. Mltiprocessing is applied at this stage using ``j
 distributing the workload across available CPU cores as configured by
 :class:`~preface.configs.MultiprocessingConfigurations`.
 
-(Under Construction!)
+PhaseTwo proceeds through three steps:
+- ``MultiprocessingWrapper``: Initializes necessary lookup tables and ``joblib`` multiprocessing for Phase Two 
+- ``MultiprocessingProcess``: For each planet, find and rank viable transit events in the given observing window
+- ``PostCleaner``: Assembles ``MultiprocessingProcess`` outputs for each planet, then generates two final ranked transit datasets
+
+Step 1: ``MultiprocessingWrapper``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to reduce per-planet runtime during ``MultiprocessingProcess``, ``MultiprocessingWrapper`` first
+constructs the necessary lookup tables to be used across all parallel jobs, then dispatches those jobs via ``joblib``.
+
+The following preparatory steps are executed in the following sequence:
+
+1. **IERS table update**: Downloads or refreshes the IERS-A Earth orientation table required by Astropy for
+    accurate coordinate transformations, falling back to an IERS mirror on network timeout.
+    The cached copy is refreshed automatically if older than 7 days.
+
+2. **Telescope location & timezone resolution**: Gathers the IANA timezone of the telescope via its stored latitude
+    and longitude for local-time handling during graphical output during multiprocessing.
+
+4. **Sun & Moon AltAz lookup table**: Precomputes Sun and Moon altitude/azimuth for every minute across the provided
+    observation window (padded by 2 days). Positions are first computed at 10-minute precision in the local ``AltAz`` frame,
+    then up-sampled to 1-minute resolution via cubic spline interpolation in Cartesian coordinates. Saved as a compressed Parquet file.
+
+5. **Lunar brightness lookup table**: If ``toggle_moonlight_noise`` is enabled, precomputes the Moon's hourly apparent magnitude
+   using the Allen (1976) empirical phase-angle formula, with lunar phase angles from ``pyephem`` and per-filter full-Moon magnitudes
+   empirically calculated from Toledano et al. (2024)'s LIME toolbox sampling during October 2025 to May 2026 at TNT ULTRASPEC.
+   Per-filter effective wavelengths are retrieved from Bessell et al. (1998) and Fukugita et al. (1996). Saved as a compressed Parquet file.
+
+With all lookup tables in place, ``MultiprocessingProcess`` is then dispatched per viable planet as a ``joblib`` job, with progress
+tracked via ``tqdm``.
+
+Step 2: ``MultiprocessingProcess``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+(WIP!)
+
+Step 3: ``PostCleaner``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once all per-planet event files have been generated by the multiprocessing pool,
+``PostCleaner`` assembles the final pipeline outputs:
+
+**Full event list.** All per-planet CSV files are read then merged into a single DataFrame.
+Unobservable events (internal rank ``X``) are removed. The remaining events are sorted by
+final transit metric :math:`\cal{D}_\mathrm{final}` from highest to lowest and
+written to ``full_ranked_event_list/``. This file is the primary output of the pipeline
+and can be used directly to construct observing schedules.
+
+**Cumulative observability scores.** For each planet, all events for which event weight
+:math:`W_\mathrm{event} > 0.5` (full transit capture with at least 50% baseline coverage
+on both sides) are identified. Their :math:`\cal{D}_\mathrm{final}` scores are summed
+to produce a cumulative observability score, and the total count of qualifying events is recorded.
+These results are written to ``cumulative_observability_scores/``.
+
+This product is intended to help campaign planners distinguish between planets that offer
+a single high-priority window and those that present multiple well-scored opportunities
+throughout the observation window.
+
+.. note::
+   Intermediate CSV files written to the pipeline's internal data store during the run
+   can be removed after completion using :func:`~preface.wipe_intermediate_csvs`.
+
 
 .. Step 1: MultiprocessingWrapper
 .. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -343,29 +424,3 @@ distributing the workload across available CPU cores as configured by
 .. value of a target (Phase One) and the practical quality of the specific observing
 .. opportunity (Phase Two). Per-planet results are saved to the ``individual_planets/``
 .. output directory.
-
-.. Step 2: PostCleaner
-.. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. Once all per-planet event files have been generated by the multiprocessing pool,
-.. PostCleaner assembles the final pipeline outputs.
-
-.. **Full event list.** All per-planet CSV files are read in using a ``glob`` mask and
-.. merged into a single DataFrame. Unobservable events (internal rank ``X``) are removed.
-.. The remaining events are sorted by :math:`W_\mathrm{final}` from highest to lowest and
-.. written to ``full_ranked_event_list/``. This file is the primary output of the pipeline
-.. and can be used directly to construct observing schedules.
-
-.. **Cumulative observability scores.** For each planet, all events for which
-.. :math:`W_\mathrm{event} > 0.5` — corresponding to full transit capture with at least
-.. 50% baseline coverage on both sides — are identified. Their :math:`W_\mathrm{final}`
-.. scores are summed to produce a cumulative observability score, and the total count of
-.. qualifying events is recorded. These results are written to
-.. ``cumulative_observability_scores/``. This product is intended to help campaign planners
-.. distinguish between planets that offer a single high-priority window and those that
-.. present multiple well-scored opportunities throughout the season — a distinction relevant
-.. to both target-of-opportunity strategies and extended monitoring programmes.
-
-.. .. note::
-..    Intermediate CSV files written to the pipeline's internal data store during the run
-..    can be removed after completion using :func:`~preface.wipe_intermediate_csvs`.

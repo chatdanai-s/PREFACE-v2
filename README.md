@@ -7,6 +7,7 @@
 ## To-do List
 As this project is work in progress, here is the current to-do list:
 - [ ] Finish documentation
+- [ ] Implement automatic exoplanets.eu API querying
 - [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
 - [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
 - [ ] (Maybe) Reduce multiprocessing overhead
@@ -65,7 +66,7 @@ OutputConfigs = OutputConfigurations(
     observation_end=ObsEnd,
     output_folder=OutputFolder,
     metric_mode="Rank",
-    viable_cumulative_cut=0.97
+    viable_cumulative_cut=0.90
 )
 
 MoonlightConfigs = MoonlightNoiseConfigurations(

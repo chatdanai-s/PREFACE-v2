@@ -200,7 +200,7 @@ as inclusive as possible. No corresponding calibration instrument is defined for
 The ``Cutter`` evaluates the cumulative rank-score distribution for the calibration instrument
 and identifies the minimum absolute rank score at which the cumulative fraction equals
 ``viable_cumulative_cut`` (e.g. ``0.97``). This threshold score is returned and passed
-to the ViabilitySplitter.
+to the ``ViabilitySplitter``.
 
 Step 7: ``ViabilitySplitter``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

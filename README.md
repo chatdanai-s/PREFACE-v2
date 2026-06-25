@@ -6,8 +6,8 @@
 
 ## To-do List
 As this project is work in progress, here is the current to-do list:
-- [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
 - [ ] Finish documentation
+- [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
 - [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
 - [ ] (Maybe) Reduce multiprocessing overhead
 - [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
@@ -34,7 +34,7 @@ Using `preface` consists of four steps:
 
 Input validation is performed automatically before pipeline execution.
 
-Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface-spearnet.readthedocs.io](https://preface-spearnet.readthedocs.io)**.
+Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface.readthedocs.io](https://preface.readthedocs.io)**.
 
 ### Example
 

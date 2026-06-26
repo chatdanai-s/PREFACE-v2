@@ -316,7 +316,7 @@ start time :math:`T_{1,n}` and its associated timing uncertainty :math:`\sigma_n
 
 .. math::
 
-   T_{1,n} = T_{1,\mathrm{ref}} + n \cdot P
+   T_{1,n} = T_{1,0} + n \cdot P
 
 .. math::
 
@@ -356,9 +356,9 @@ handled explicitly such that the night starts/ends are bounded by the 30-hour wi
 the corresponding transit's mid-transit time.
 
 Then, four binary altitude spot-check conditions are evaluated over the transit time window,
-nighttime window, and transit-night overlap windows:
+nighttime window, and transit-night overlap windows.
 
-- *Target reaches minimum altitude:* target exceeds :math:`30°` at any point during the transit
+- *Target reaches minimum altitude:* target exceeds observable altitude at any point during the transit
   or night.
 - *Target above minimum altitude for entire transit:* target remains above :math:`30°`
   throughout the full transit-plus-baseline window.
@@ -378,96 +378,95 @@ following internal rank markers:
    * - Rank
      - Condition
    * - ``03_F``
-     - Night contains full transit + baselines, 
-       Full transit + baselines always above observable height,
-       target visible at some point during night.
+     - Night contains full transit + baselines.
+       |br| Full transit + baselines always above observable altitude.
+       |br| Target visible at some point during night.
    * - ``03_P``
-     - Night contains full transit + baselines, 
-       Full transit + baselines at observable height during transit or during night,
-       transit observable at some point during night.
+     - Night contains full transit + baselines.
+       |br| Full transit + baselines at observable altitude during transit or during night.
+       |br| Transit observable at some point during night.
    * - ``02_F``
-     - Night contains full transit but not full baselines, 
-       Full transit + baselines always above observable height,
-       target visible at some point during night.
+     - Night contains full transit but not full baselines.
+       |br| Full transit + baselines always above observable altitude.
+       |br| Target visible at some point during night.
    * - ``02_P``
-     - Night contains full transit but not full baselines, 
-       Full transit + baselines at observable height during transit or during night,
-       transit observable at some point during night.
+     - Night contains full transit but not full baselines.
+       |br| Full transit + baselines at observable altitude during transit or during night.
+       |br| Transit observable at some point during night.
    * - ``01_F``
-     - Night contains partial transits,
-       Full transit + baselines always above observable height,
-       target visible at some point during night.
+     - Night contains partial transits.
+       |br| Full transit + baselines always above observable altitude.
+       |br| Target visible at some point during night.
    * - ``01_P``
-     - Night contains partial transits,
-       Full transit + baselines at observable height during transit or during night,
-       transit observable at some point during night.
+     - Night contains partial transits.
+       |br| Full transit + baselines at observable altitude during transit or during night.
+       |br| Transit observable at some point during night.
    * - ``X``
      - No part of the transit is observable. Event is discarded.
 
+.. |br| raw:: html
+
+   <br />
+
+where the "minimum observable altitude" is :math:`30°`, which corresponds to an airmass of 2.
 The classification follows a top-down hierarchy: the strictest condition (``03_F``) is tested
 first, and the event falls through until a matching condition is found.
 
-.. **Airmass-weighted scoring.**
+**Integration limits.**
+For events ranked ``01`` or above, the usable observing window is bounded by integration limits
+:math:`L_1` and :math:`L_2`, defined as whichever is more
+restrictive between astronomical night and the times at which the target crosses the minimum
+observable altitude.
 
-.. **Integration limits.**
-.. For events ranked ``01`` or above, the usable observing window is bounded by integration limits
-.. :math:`L_1` and :math:`L_2` (decimal hours relative to midnight), defined as whichever is more
-.. restrictive between astronomical night and the times at which the target crosses the minimum
-.. observable altitude.
+For ``F``-ranked events, where the target remains above :math:`30°` throughout the transit:
 
-.. For ``F``-ranked events, where the target remains above :math:`30°` throughout:
+.. math::
 
-.. .. math::
+   L_1 = \max\left( T_\mathrm{BaseStart},\; T_\mathrm{sunfall} \right), \qquad
+   L_2 = \min\left( T_\mathrm{BaseEnd},\; T_\mathrm{sunrise} \right)
 
-..    L_1 = \max\!\left( T_\mathrm{BS},\; t_\mathrm{sunfall} \right), \qquad
-..    L_2 = \min\!\left( T_\mathrm{BE},\; t_\mathrm{sunrise} \right)
+For ``P``-ranked events, the minimum-altitude crossing time(s) of the target's path are
+identified by detecting zero-crossings of altitude relative to :math:`30°`. A conditional logic
+gate handles scenarios including one or two crossing points, a rising or setting target, and
+varying orderings of the sunfall, altitude crossing, and transit contact times. Any event for which
+:math:`L_2 \leq L_1` after limit assignment is downgraded to rank ``X`` and discarded.
 
-.. For ``P``-ranked events, the minimum-altitude crossing time(s) of the target's path are
-.. identified by detecting zero-crossings of altitude relative to :math:`30°`. A conditional logic
-.. gate handles scenarios including one or two crossing points, a rising or setting target, and
-.. varying orderings of the sunfall, crossing, and transit contact times. Any event for which
-.. :math:`L_2 \leq L_1` after limit assignment is downgraded to rank ``X`` and discarded.
+**Airmass-weighted scoring.**
+The atmospheric seeing PSF :math:`\Theta` scales with airmass :math:`X = \csc(i)` at an altitude angle
+of :math:`i`, as :math:`\Theta \propto \lambda^{-1/5} \cdot X^{3/5}`. To penalise events at low altitude,
+an airmass weight is computed by the inverse of an intergral that describes how the airmass changes over the
+usable observing window:
 
+.. math::
 
-.. **Airmass weighting.**
-.. The atmospheric seeing PSF scales with airmass as :math:`\Theta \propto \lambda^{-1/5}
-.. \cdot X^{3/5}`. To penalise events at low altitude, an airmass weight is computed by integrating
-.. the inverse seeing over the usable observing window:
+   W_\mathrm{airmass} = 3 \left( \frac{L_2-L_1}{\int_{L_1}^{L_2}X(t)^{3/5} dt} - \frac{2}{3} \right)
 
-.. .. math::
-
-..    W_\mathrm{airmass} = \frac{1}{L_2 - L_1}
-..    \int_{L_1}^{L_2} \left( X(t)^{-3/5} \right)^3 dt
-
-.. where :math:`X(t) = \sec\theta(t)` is the planar airmass at time :math:`t`. The weight is
-.. normalised to approximately unity for a zenith transit and tends to zero near the minimum
-.. altitude limit. The numerical integration uses a cubic spline on the precomputed altitude
-.. profile, with a fallback on an extended time axis for transits near the window boundary.
+The weight is amended to return a value of 1 for targets constantly at the zenith, decline steeply as
+altitude decreases, and have a value of 0 for targets constantly at :math:`30^\circ` altitude.
 
 **Transit coverage scoring.**
-
 Baseline coverage before and after the transit is essential for fitting the light curve and
 recovering limb-darkening parameters. The observable fraction of each of five segments within
 :math:`[L_1, L_2]` is evaluated:
 
-1. Pre-transit baseline (:math:`T_\mathrm{BS}` to :math:`T_1`)
+1. Pre-transit baseline (:math:`T_\mathrm{BaseStart}` to :math:`T_1`)
 2. Ingress (:math:`T_1` to :math:`T_2`)
 3. Full mid-transit (:math:`T_2` to :math:`T_3`)
 4. Egress (:math:`T_3` to :math:`T_4`)
-5. Post-transit baseline (:math:`T_4` to :math:`T_\mathrm{BE}`)
+5. Post-transit baseline (:math:`T_4` to :math:`T_\mathrm{BaseEnd}`)
 
 For each segment, the observable sub-interval is clipped to the overlap of the segment with
 the visibility window :math:`[L_1, L_2]`:
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 35 35
+   :widths: 30 45 45
 
    * - Segment
      - Lower clipped limit
      - Upper clipped limit
    * - Pre-transit baseline
-     - :math:`L_{\mathrm{BS}1} = \max(L_1,\,T_\mathrm{BS})`
+     - :math:`L_{\mathrm{BS}1} = \max(L_1,\,T_\mathrm{BaseStart})`
      - :math:`L_{\mathrm{BS}2} = \min(L_2,\,T_1)`
    * - Ingress
      - :math:`L_{\mathrm{In}1} = \max(L_1,\,T_1)`
@@ -480,7 +479,7 @@ the visibility window :math:`[L_1, L_2]`:
      - :math:`L_{\mathrm{Eg}2} = \min(L_2,\,T_4)`
    * - Post-transit baseline
      - :math:`L_{\mathrm{BE}1} = \max(L_1,\,T_4)`
-     - :math:`L_{\mathrm{BE}2} = \min(L_2,\,T_\mathrm{BE})`
+     - :math:`L_{\mathrm{BE}2} = \min(L_2,\,T_\mathrm{BaseEnd})`
 
 In cases where the segment lies entirely outside the visibility window, both the clipped limits are set to zero.
 
@@ -489,7 +488,7 @@ These clipped lengths are combined into three weight components:
 .. math::
 
    W_\mathrm{base}  &= \frac{(L_{\mathrm{BS}2} - L_{\mathrm{BS}1})
-                              + (L_{\mathrm{BE}2} - L_{\mathrm{BE}1})}{\text{2 hours}} \\
+                              + (L_{\mathrm{BE}2} - L_{\mathrm{BE}1})}{\text{2 h}} \\
    W_\mathrm{trans} &= \frac{L_{\mathrm{Tr}2} - L_{\mathrm{Tr}1}}{T_3 - T_2} \\
    W_\mathrm{inout} &= \frac{(L_{\mathrm{In}2} - L_{\mathrm{In}1})
                               + (L_{\mathrm{Eg}2} - L_{\mathrm{Eg}1})}{2\,(T_2 - T_1)}
@@ -508,15 +507,14 @@ mid-transit term is omitted:
    W_\mathrm{event} = W_\mathrm{base} \cdot W_\mathrm{inout}
 
 **Moonlight noise scoring.**
-
-If ``toggle_moonlight_noise`` is enabled, a moon noise metric is computed using the atmospheric
+If ``toggle_moonlight_noise`` is enabled, a moonlight noise metric is computed using the atmospheric
 scattering model of Winkler (2022), incorporating both Rayleigh and Mie scattering components.
 The scattered moonlight intensity after one-time scattering :math:`I_{L1}` (in flux/arcsec\
 :sup:`2`) is modelled as:
 
 .. math::
 
-   I_{L1} = p(\theta)\, F^*_L\, \frac{\tau_R + \tau_M}{\tau}\,
+   I_{L1} = p(\theta) \cdot F^*_L  \cdot \frac{\tau_R + \tau_M}{\tau}  \cdot
              \sec\zeta\, \frac{e^{-\tau \sec\zeta} - e^{-\tau \sec z}}{\sec z - \sec\zeta}
 
 where the composite scattering phase function :math:`p(\theta)` is a weighted combination of the
@@ -533,13 +531,13 @@ The quantities appearing in these expressions are defined as follows:
 
 .. list-table::
    :header-rows: 1
-   :widths: 10 80
+   :widths: 10 70
 
    * - Symbol
      - Description
    * - :math:`F^*_L`
-     - Top-of-atmosphere (TOA) lunar flux (in flux), retrieved from the precomputed
-       lunar brightness lookup table at the start of observation
+     - Top-of-atmosphere (TOA) lunar flux (in flux),
+       |br| retrieved from precomputed lunar brightness LUT at start of observation
    * - :math:`\zeta`
      - Zenith angle of the observation target
    * - :math:`z`
@@ -549,15 +547,23 @@ The quantities appearing in these expressions are defined as follows:
    * - :math:`\tau_R`
      - Rayleigh scattering optical depth
    * - :math:`\tau_M`
-     - Mie (aerosol) scattering optical depth, sourced from the configurable
-       ``scattering_aod`` parameter
+     - Mie (aerosol) scattering optical depth,
+       |br| sourced from the configurable ``scattering_aod`` parameter
+   * - :math:`\tau_A`
+     - Absorption scattering optical depth,
+       |br| sourced from the configurable ``absorption_aod`` parameter
    * - :math:`\tau`
      - Total optical depth (:math:`\tau = \tau_R + \tau_M + \tau_A`)
    * - :math:`\chi`
      - Rayleigh depolarisation factor, fixed at :math:`\chi = 0.0148`
    * - :math:`g`
-     - Aerosol asymmetry factor, sourced from the configurable
-       ``asymmetry_factor`` parameter; typically in the range 0.5–0.8
+     - Aerosol asymmetry factor,
+       |br| sourced from the configurable ``asymmetry_factor`` parameter;
+       |br| typically in the range 0.5-0.8
+
+.. |br| raw:: html
+
+   <br />
 
 The Rayleigh scattering optical depth is computed from the instrument altitude and filter
 wavelength as:
@@ -578,14 +584,14 @@ zeropoints. The sky brightness contribution over a sky patch of area :math:`A`
 
    m_\mathrm{bg,moon} = \mu_\mathrm{bg,moon} - 2.5\log(A)
 
-The SNR reduction factor, referred to as the moon noise metric, is then derived from the
+The SNR reduction factor, referred to as the moonlight noise metric, is then derived from the
 ratio of the new and old detectability scores :math:`\mathcal{D}`, which are directly
 proportional to the SNR. The resulting moonlight noise metric is:
 
 .. math::
 
-   W_\mathrm{Moon} &= \left(1 + \frac{10^{-0.4(m_\mathrm{bg,moon} - \gamma)}}
-                      {10^{-0.4 m_*} + 10^{-0.4 m_\mathrm{sky}}}\right)^{-0.5}
+   W_\mathrm{Moon} = \left(1 + \frac{10^{-0.4(m_\mathrm{bg,moon} - \gamma)}}
+                     {10^{-0.4 m_*} + 10^{-0.4 m_\mathrm{sky}}}\right)^{-0.5}
 
 where :math:`\gamma` is a configurable amplification factor (default :math:`\gamma = 5`)
 that amplifies the effective moon background brightness to yield a more discriminating

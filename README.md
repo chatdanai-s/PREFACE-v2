@@ -4,17 +4,6 @@
 
 ---
 
-## To-do List
-As this project is work in progress, here is the current to-do list:
-- [ ] Finish documentation
-- [ ] Implement automatic exoplanets.eu API querying
-- [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
-- [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
-- [ ] (Maybe) Reduce multiprocessing overhead
-- [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
-
----
-
 ## Installation
 
 Install the latest stable release from PyPI:
@@ -136,3 +125,14 @@ If you use **PREFACE** in academic work, please cite the associated publications
   url          = {https://research.manchester.ac.uk/en/studentTheses/spearnet-a-pilot-exoplanet-transmission-spectroscopy-survey}
 }
 ``` -->
+
+---
+
+## To-do List
+As this project is work in progress, here is the current to-do list:
+- [ ] Finish documentation
+- [ ] Implement automatic exoplanets.eu API querying
+- [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
+- [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
+- [ ] (Maybe) Reduce multiprocessing overhead
+- [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval

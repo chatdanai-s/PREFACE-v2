@@ -478,7 +478,7 @@ def P2Predictor(
 
 
         # IMPLEMENT INTERNAL_RANKS   
-        # Bank of generator expressions (F denotes "strict", for which target must always be sufficiently high)
+        # Bank of generator expressions (S denotes "strict", for which target must always be sufficiently high)
         strict_altitude_conditions = [target_above_min_alt_entire_transit, target_reaches_min_alt_at_night]
         lax_altitude_conditions = [target_reaches_min_alt, target_reaches_min_alt_during_transit_at_night]
 

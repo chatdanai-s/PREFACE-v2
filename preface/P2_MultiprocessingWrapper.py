@@ -274,7 +274,7 @@ def make_LUT_Moon(CSV_core_folder, CSV_intermediate_folder, instrument, obs_star
         phase_angles = np.zeros_like(hourly_times)
         moon = ephem.Moon()
         for i, t in enumerate(hourly_times):
-            moon.compute(t)  # Assume TDB ~ UTC, which is sufficient for hourly precision
+            moon.compute(t)  # Assume TDB ~ UTC, which ~10 min error is sufficient for hourly precision
             fraction_of_illumination = moon.moon_phase
 
             phase_angle_deg = np.degrees(np.arccos(2*fraction_of_illumination - 1))

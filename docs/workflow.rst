@@ -284,9 +284,16 @@ observation window (padded by 2 days). Positions are first computed at 10-minute
 then up-sampled to 1-minute resolution via cubic spline interpolation in Cartesian coordinates. Saved as a compressed Parquet file.
 
 **Lunar brightness lookup table.** If ``toggle_moonlight_noise`` is enabled, precomputes the Moon's hourly apparent magnitude
-using the Allen (1976) empirical phase-angle formula, with lunar phase angles from ``pyephem`` and per-filter full-Moon magnitudes
+using the Allen (1976) empirical phase-angle formula
+
+.. math::
+
+   m_\text{moon} (\lambda, \phi) = m_\text{full moon} (\lambda) + 0.026|\phi| + 4 \times 10^{-9} \cdot \phi^4
+
+with lunar phase angles :math:`\phi` from ``pyephem`` and per-filter full-Moon magnitudes
 empirically calculated from Toledano et al. (2024)'s LIME toolbox sampling during October 2025 to May 2026 at TNT ULTRASPEC.
-Per-filter effective wavelengths are retrieved from Bessell et al. (1998) and Fukugita et al. (1996). Saved as a compressed Parquet file.
+Per-filter effective wavelengths :math:`\lambda` are retrieved from Bessell et al. (1998) and Fukugita et al. (1996).
+Saved as a compressed Parquet file.
 
 With all lookup tables in place, ``MultiprocessingProcess`` is then dispatched per viable planet as a ``joblib`` job, with progress
 tracked via ``tqdm``.
@@ -325,17 +332,36 @@ start time :math:`T_{1,n}` and its associated timing uncertainty :math:`\sigma_n
 **Transit contact time calculation.**
 For each predicted transit, the four contact times are derived from the transit geometry. The
 mid-transit :math:`T_0` and fourth contact :math:`T_4` follow directly from :math:`T_1` and
-:math:`t_{14}`. The internal contacts :math:`T_2` and :math:`T_3` are derived from the transit
+:math:`t_{14}`
+
+.. math::
+
+   T_0 = T_1 + (0.5 \cdot t_{14}), \qquad T_4 = T_1 + t_{14}
+
+The internal contacts :math:`T_2` and :math:`T_3` are derived from the transit
 geometry model of Seager & Mallén-Ornelas (2003), from which
 
 .. math::
 
    t_{23} = \frac{P}{\pi} \arcsin \left( \frac{ \sqrt{(R_*-R_p)^2 - (bR_*)^2} }{a} \right)
 
-and the ingress/egress duration :math:`t_{12} = (t_{14} - t_{23}) / 2` follows. For grazing transits
-where impact parameter :math:`b = 0` and :math:`T_2` is unphysical, :math:`T_2` and :math:`T_3`
-are both set to :math:`T_0` and the event is treated as having no flat bottom. Finally,
-One-hour baseline windows are appended on either side of the transit:
+and the ingress/egress duration
+
+.. math::
+
+   t_{12} = \frac{|t_{14} - t_{23}|}{2}
+
+follows. Subsequently,
+
+.. math::
+
+   T_2 = T_1 + t_{12}, \qquad T_4 = T_4 - t_{12}
+
+For grazing transits where impact parameter :math:`b = 0` and :math:`T_2`
+is unphysical, :math:`T_2` and :math:`T_3` are both set to :math:`T_0` and the event
+is treated as having no flat bottom.
+
+Finally, One-hour baseline windows are appended on either side of the transit:
 
 .. math::
 
@@ -488,7 +514,7 @@ These clipped lengths are combined into three weight components:
 .. math::
 
    W_\mathrm{base}  &= \frac{(L_{\mathrm{BS}2} - L_{\mathrm{BS}1})
-                              + (L_{\mathrm{BE}2} - L_{\mathrm{BE}1})}{\text{2 h}} \\
+                              + (L_{\mathrm{BE}2} - L_{\mathrm{BE}1})}{\text{2 hr}} \\
    W_\mathrm{trans} &= \frac{L_{\mathrm{Tr}2} - L_{\mathrm{Tr}1}}{T_3 - T_2} \\
    W_\mathrm{inout} &= \frac{(L_{\mathrm{In}2} - L_{\mathrm{In}1})
                               + (L_{\mathrm{Eg}2} - L_{\mathrm{Eg}1})}{2\,(T_2 - T_1)}
@@ -550,7 +576,7 @@ The quantities appearing in these expressions are defined as follows:
      - Mie (aerosol) scattering optical depth,
        |br| sourced from the configurable ``scattering_aod`` parameter
    * - :math:`\tau_A`
-     - Absorption scattering optical depth,
+     - Absorption optical depth,
        |br| sourced from the configurable ``absorption_aod`` parameter
    * - :math:`\tau`
      - Total optical depth (:math:`\tau = \tau_R + \tau_M + \tau_A`)

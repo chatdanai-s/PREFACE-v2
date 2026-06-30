@@ -149,7 +149,7 @@ Controls optional moonlight background modelling.
         scattering_aod=0.2,
         absorption_aod=0.3,
         asymmetry_factor=0.6,
-        moonlight_amplification_factor=5
+        moonlight_amplification_factor=10
     )
 
 .. list-table::
@@ -168,7 +168,7 @@ Controls optional moonlight background modelling.
      - ``False``
    * - ``scattering_aod``
      - ``float``
-     - Atmospheric scattering aerosol optical depth.
+     - Atmospheric Mie scattering aerosol optical depth.
      - Non-negative.
      - ``0.2``
    * - ``absorption_aod``
@@ -185,7 +185,7 @@ Controls optional moonlight background modelling.
      - ``float``
      - Empirical scaling controlling modelled moonlight influence.
      - Positive value ≥ ``5`` recommended.
-     - ``5``
+     - ``10``
 
 .. note::
    Moonlight modelling currently supports only UBVRI and ugriz photometric

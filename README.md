@@ -39,7 +39,7 @@ from preface.configs import (
 )
 
 ObsStart = dt.datetime(2025, 10, 1)
-ObsEnd = dt.datetime(2026, 5, 31)
+ObsEnd = dt.datetime(2026, 1, 1)
 OutputFolder = r"C:\PREFACE_Output"
 
 TelescopeConfigs = TelescopeConfigurations(
@@ -55,7 +55,9 @@ OutputConfigs = OutputConfigurations(
     observation_end=ObsEnd,
     output_folder=OutputFolder,
     metric_mode="Rank",
-    viable_cumulative_cut=0.90
+    viable_cumulative_cut=0.90,
+    toggle_graph_outputs=True,
+    event_weight_graph_threshold=0.75
 )
 
 MoonlightConfigs = MoonlightNoiseConfigurations(
@@ -63,9 +65,7 @@ MoonlightConfigs = MoonlightNoiseConfigurations(
     scattering_aod=0.2,
     absorption_aod=0.3,
     asymmetry_factor=0.6,
-    moonlight_amplification_factor=5,
-    toggle_graph_outputs=True,
-    event_weight_graph_threshold=0.75
+    moonlight_amplification_factor=10
 )
 
 MultiprocessingConfigs = MultiprocessingConfigurations(
@@ -124,14 +124,13 @@ If you use **PREFACE** in academic work, please cite the associated publications
   month        = nov,
   url          = {https://research.manchester.ac.uk/en/studentTheses/spearnet-a-pilot-exoplanet-transmission-spectroscopy-survey}
 }
-``` -->
+```
 
 ---
 
 ## To-do List
-- [ ] Refine documentation
-- [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
-- [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
 - [ ] (Maybe) Implement automatic exoplanets.eu API querying
 - [ ] (Maybe) Reduce multiprocessing overhead
 - [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
+
+ -->

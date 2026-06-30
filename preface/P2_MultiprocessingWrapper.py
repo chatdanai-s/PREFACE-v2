@@ -30,6 +30,10 @@ import astropy.coordinates as ac
 from astropy.coordinates import AltAz, get_sun, get_body, SkyCoord
 from scipy.interpolate import interp1d
 
+# Forces astropy to use IERS cache
+from astropy.utils.iers import conf as iers_conf
+iers_conf.auto_max_age = None
+
 # Get parameters associated with UBVRI/ugriz filters
 def getFilterParams(CSV_core_folder, filter_name):
     df_filters = pd.read_csv(CSV_core_folder / 'filter_information.csv')

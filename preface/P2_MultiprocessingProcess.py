@@ -34,6 +34,9 @@ import scipy.integrate as integrate
 from scipy.interpolate import interp1d
 from dateutil.relativedelta import relativedelta
 
+# Forces astropy to use IERS cache
+from astropy.utils.iers import conf as iers_conf
+iers_conf.auto_max_age = None
 
 # Cache all LUTs outside main function, as to not reopen everytime
 _lut_cache = {}
@@ -267,7 +270,9 @@ def P2Predictor(
         # With a little bit of math, you can disregard calling of zeropoint magnitude completely
         # when converting from mag to flux, then flux/arcsec^2 back to mag/arcsec^2.
         # Returns moon contribution to sky background in mag/arcsec^2.
-        moon_intensity_mag = moon_mag - 2.5 * np.log10(moon_intensity_decrease)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            moon_intensity_mag = moon_mag - 2.5 * np.log10(moon_intensity_decrease)
+        moon_intensity_mag[~np.isfinite(moon_intensity_mag)] = np.nan
         
         # Calculate noise metric
         moon_flux = 10**(-0.4 * (
@@ -281,8 +286,8 @@ def P2Predictor(
             sky_flux = 0
         target_flux = 10**(-0.4 * df[f'{filter_name}mag'][0])
         
-        MoonNoiseMetric = (1 + moon_flux/(sky_flux + target_flux)) ** (-0.5)
-        return np.min(MoonNoiseMetric)  # Take min value (signifies highest SNR reduction)
+        MoonNoiseMetric = 1 / np.sqrt(1 + moon_flux/(sky_flux + target_flux))
+        return np.nanmin(MoonNoiseMetric)  # Take min value (signifies highest SNR reduction)
 
 
     ##### WE GET INTO CALCULATION AND PLOTTING HERE #####

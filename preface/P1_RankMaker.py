@@ -226,7 +226,7 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
         Rp = row['Rp']
         Rs = row['R*']
         Mp = row['Mp'] if pd.notna(row['Mp']) else row['Mp_Calc']
-        Teq = row['Teq'] if pd.notna(row['Teq']) else row['Teq_Calc']
+        Teq = row['Teq_Calc']
         mJ = row['Jmag']
         ScaleFactor = 1
 

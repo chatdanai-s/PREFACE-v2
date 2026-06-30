@@ -310,7 +310,7 @@ class MoonlightNoiseConfigurations:
         scattering_aod=0.2,
         absorption_aod=0.3,
         asymmetry_factor=0.6,
-        moonlight_amplification_factor=5,
+        moonlight_amplification_factor=9,
     ):
         """
         Initialize and validate moonlight noise model parameters
@@ -329,7 +329,7 @@ class MoonlightNoiseConfigurations:
         asymmetry_factor : float, default=0.6
             Scattering phase-function asymmetry parameter.
             Must be between -1 and +1.
-        moonlight_amplification_factor : float, default=5
+        moonlight_amplification_factor : float, default=10
             Empirical scaling factor applied to the moonlight model.
             Defined as the effective decrease in lunar magnitude used to
             amplify modeled moonlight brightness and its impact on target SNR.
@@ -375,7 +375,7 @@ class MoonlightNoiseConfigurations:
             if not isNumber(moonlight_amplification_factor):
                 InputErrorFlag = True
                 print(f"[InputCheck] '{moonlight_amplification_factor}' is not a valid moonlight_amplification_factor! "
-                      "Is it a number? (5 is default)")
+                      "Is it a number? (default=10)")
 
 
         # Terminate if issues arise

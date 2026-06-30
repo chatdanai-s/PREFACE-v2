@@ -84,18 +84,18 @@
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading"></a></h1>
 <p>Using PREFACE involves four steps:</p>
 <ol class="arabic simple">
-<li><p>Configure the observing instrument with <code class="xref py py-class docutils literal notranslate"><span class="pre">TelescopeConfigurations</span></code>.</p></li>
-<li><p>Define the observing window and output options with <code class="xref py py-class docutils literal notranslate"><span class="pre">OutputConfigurations</span></code>.</p></li>
+<li><p>Configure the observing instrument with <a class="reference internal" href="api.html#preface.configs.TelescopeConfigurations" title="preface.configs.TelescopeConfigurations"><code class="xref py py-class docutils literal notranslate"><span class="pre">TelescopeConfigurations</span></code></a>.</p></li>
+<li><p>Define the observing window and output options with <a class="reference internal" href="api.html#preface.configs.OutputConfigurations" title="preface.configs.OutputConfigurations"><code class="xref py py-class docutils literal notranslate"><span class="pre">OutputConfigurations</span></code></a>.</p></li>
 <li><p>Optionally configure moonlight modelling and multiprocessing with
-<code class="xref py py-class docutils literal notranslate"><span class="pre">MoonlightNoiseConfigurations</span></code> and
-<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiprocessingConfigurations</span></code>.</p></li>
-<li><p>Execute the complete pipeline with <code class="xref py py-func docutils literal notranslate"><span class="pre">run_preface()</span></code>.</p></li>
+<a class="reference internal" href="api.html#preface.configs.MoonlightNoiseConfigurations" title="preface.configs.MoonlightNoiseConfigurations"><code class="xref py py-class docutils literal notranslate"><span class="pre">MoonlightNoiseConfigurations</span></code></a> and
+<a class="reference internal" href="api.html#preface.configs.MultiprocessingConfigurations" title="preface.configs.MultiprocessingConfigurations"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiprocessingConfigurations</span></code></a>.</p></li>
+<li><p>Execute the complete pipeline with <a class="reference internal" href="api.html#preface.run_preface" title="preface.run_preface"><code class="xref py py-func docutils literal notranslate"><span class="pre">run_preface()</span></code></a>.</p></li>
 </ol>
 <p>Input validation is performed automatically before pipeline execution.</p>
 <section id="example">
 <h2>Example<a class="headerlink" href="#example" title="Link to this heading"></a></h2>
 <p>The following example runs PREFACE over an observing window from October 2025
-to May 2026, using the TNT ULTRASPEC instrument with moonlight modelling and
+to December 2025, using the TNT ULTRASPEC instrument with moonlight modelling and
 multiprocessing enabled:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dt</span>
 
@@ -108,7 +108,7 @@ multiprocessing enabled:</p>
 <span class="p">)</span>
 
 <span class="n">ObsStart</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="n">ObsEnd</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">31</span><span class="p">)</span>
+<span class="n">ObsEnd</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 <span class="n">OutputFolder</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;C:\PREFACE_Output&quot;</span>
 
 <span class="n">TelescopeConfigs</span> <span class="o">=</span> <span class="n">TelescopeConfigurations</span><span class="p">(</span>
@@ -134,7 +134,7 @@ multiprocessing enabled:</p>
     <span class="n">scattering_aod</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
     <span class="n">absorption_aod</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
     <span class="n">asymmetry_factor</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
-    <span class="n">moonlight_amplification_factor</span><span class="o">=</span><span class="mi">5</span>
+    <span class="n">moonlight_amplification_factor</span><span class="o">=</span><span class="mi">10</span>
 <span class="p">)</span>
 
 <span class="n">MultiprocessingConfigs</span> <span class="o">=</span> <span class="n">MultiprocessingConfigurations</span><span class="p">(</span>

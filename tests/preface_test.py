@@ -7,8 +7,8 @@ from preface import run_preface
 from preface.configs import TelescopeConfigurations, OutputConfigurations, MoonlightNoiseConfigurations, MultiprocessingConfigurations
 
 
-ObsStart = dt.datetime(2025,10,1,0,0,0)
-ObsEnd = dt.datetime(2026,5,31,0,0,0)
+ObsStart = dt.datetime(2025,10,1)
+ObsEnd = dt.datetime(2026,1,1)
 outputFolder = rf'C:\Users\WBS\Documents\PREFACE_test_output'  # Change as needed in local device
 
 TelescopeConfigs = TelescopeConfigurations(
@@ -32,7 +32,7 @@ MoonlightConfigs = MoonlightNoiseConfigurations(
     scattering_aod=0.2,
     absorption_aod=0.3,
     asymmetry_factor=0.6,
-    moonlight_amplification_factor=5
+    moonlight_amplification_factor=10
 )
 MultiprocessingConfigs = MultiprocessingConfigurations(
     toggle_multiprocessing=True,

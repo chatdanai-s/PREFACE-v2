@@ -186,7 +186,8 @@ where
 contains all telescope-dependent variables.
 
 - ``Habitable_Rank``: the standard metric restricted to planets in or near the habitable
-  zone of their host star.
+  zone of their host star. This effectively sets :math:`T_\mathrm{eq} = 1` for all targets,
+  which can be followed by an application of a temperature mask afterwards.
 - ``Multi_Transit_Rank``: a metric weighted towards planets with frequent transits,
   suited to long-term monitoring campaigns:
 
@@ -533,7 +534,7 @@ mid-transit term is omitted:
    W_\mathrm{event} = W_\mathrm{base} \cdot W_\mathrm{inout}
 
 **Moonlight noise scoring.**
-If ``toggle_moonlight_noise`` is enabled, a moonlight noise metric is computed using the atmospheric
+If ``toggle_moonlight_noise`` is enabled, a moonlight noise weight is computed using the atmospheric
 scattering model of Winkler (2022), incorporating both Rayleigh and Mie scattering components.
 The scattered moonlight intensity after one-time scattering :math:`I_{L1}` (in flux/arcsec\
 :sup:`2`) is modelled as:
@@ -610,19 +611,24 @@ zeropoints. The sky brightness contribution over a sky patch of area :math:`A`
 
    m_\mathrm{bg,moon} = \mu_\mathrm{bg,moon} - 2.5\log(A)
 
-The SNR reduction factor, referred to as the moonlight noise metric, is then derived from the
+The SNR reduction factor, referred to as the moonlight noise weight, is then derived from the
 ratio of the new and old detectability scores :math:`\mathcal{D}`, which are directly
-proportional to the SNR. The resulting moonlight noise metric is:
+proportional to the SNR. The resulting moonlight noise weight is:
 
 .. math::
 
    W_\mathrm{Moon} = \left(1 + \frac{10^{-0.4(m_\mathrm{bg,moon} - \gamma)}}
                      {10^{-0.4 m_*} + 10^{-0.4 m_\mathrm{sky}}}\right)^{-0.5}
 
-where :math:`\gamma` is a configurable amplification factor (default :math:`\gamma = 5`)
-that amplifies the effective moon background brightness to yield a more discriminating
-suppression against full moon nights. If ``toggle_moonlight_noise`` is disabled,
-:math:`W_\mathrm{Moon} = 1`.
+where :math:`\gamma` is a configurable "moonlight amplification factor" that adjusts the effective
+moon background brightness to provide stronger suppression under bright moonlight conditions.
+The default value (:math:`\gamma = 10`) is calibrated such that, for a full-moon sky
+background of :math:`\mu_\mathrm{bg,moon} = 17\,\mathrm{mag/arcsec^2}`, a sky patch of
+area :math:`A = 10\,\mathrm{arcsec^2}`, and a target of magnitude
+:math:`m_* = 12`, the resulting moonlight noise weight is approximately
+:math:`W_\mathrm{Moon} \approx 0.1`.
+
+If ``toggle_moonlight_noise`` is disabled, :math:`W_\mathrm{Moon} = 1`.
 
 **Final transit decision metric.**
 Finally, the final decision metric for a given transit event is the product of four terms:

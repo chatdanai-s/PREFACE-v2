@@ -211,8 +211,7 @@ analytically using the transit geometry model of Seager &amp; Mallén-Ornelas (2
 <p><strong>Planet mass estimation.</strong> Planetary masses cannot be derived using transit parameters alone, yet
 mass is required by the metric calculation for planets. For planets lacking a literature mass, PREFACE
 estimates <span class="math notranslate nohighlight">\(M_p\)</span> from the planet’s radius using the continuous mass-radius-temperature
-relation of Edmondson et al. (2023). The relation is implemented in three regimes,
-determined by the planet radius <span class="math notranslate nohighlight">\(R_p\)</span> expressed in Earth radii:</p>
+relation of Edmondson et al. (2023):</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 21.7%" />
@@ -241,25 +240,29 @@ determined by the planet radius <span class="math notranslate nohighlight">\(R_p
 </tbody>
 </table>
 <p>The Neptunian-Jovian boundary is defined as the radius at which the mass-radius relation becomes degenerate for a Jovian planet
-with an equilibrium temperature of <span class="math notranslate nohighlight">\(T_\mathrm{eq} = 500\,\mathrm{K}\)</span>. Beyond this radius, planets of very different masses occupy
-similar radii and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate
+with an equilibrium temperature of <span class="math notranslate nohighlight">\(T_\mathrm{eq} = 500\,\mathrm{K}\)</span>. Beyond this radius,  the mass-radius relation becomes
+degenerate, and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate
 at the boundary is given. The final estimated mass is then converted from Earth masses to Jupiter masses before being stored.</p>
 </section>
 <section id="step-5-rankmaker">
 <h3>Step 5: <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code><a class="headerlink" href="#step-5-rankmaker" title="Link to this heading"></a></h3>
-<p>For each planet in the working catalogue, <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code> uses the chosen instrument’s detector properties to
-compute an optimum exposure time and an approximate signal-to-noise ratio per planet.
+<p>For each planet in the working catalogue, <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code> uses the chosen instrument’s detector
+properties to compute an optimum exposure time and an approximate signal-to-noise ratio per planet.
 These quantities are used to evaluate the Phase One selection metric, which ranks planets
 by their expected spectroscopic return for the given instrument and filter combination.</p>
 <p>Metric scores are computed for all four available metric modes simultaneously:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">Rank</span></code>: the standard photometric transmission spectroscopy metric as derived by Morgan et al. (2019):</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Rank</span></code>: the standard photometric transmission spectroscopy metric (Morgan et al. 2019):</p></li>
 </ul>
 <div class="math notranslate nohighlight">
-\[\cal D = C_{T}(\lambda) 10^{-0.2m_*} t_{14} \frac{T_{\rm eq} \rp \delta}{M_{\rm p}}\]</div>
+\[\mathcal{D} = C_{T}(\lambda) \cdot 10^{-0.2m_*} \cdot t_{14} \cdot \frac{T_\text{eq} R_p \delta}{M_p}\]</div>
 <p>where</p>
 <div class="math notranslate nohighlight">
-\[C_{T}(\lambda) = N_\lambda^{-1/2} 10^{0.2 m_{\rm zp}}\left( \frac{\texp}{\texp + \tov} \right)^{1/2}\]</div>
+\[C_{T}(\lambda)
+= N_\lambda^{-1/2} \cdot 10^{0.2m_\text{zp}} \cdot
+\left(
+   \frac{t_\text{exp}}{t_\text{exp} + t_\text{overhead}}
+\right)^{1/2}\]</div>
 <p>contains all telescope-dependent variables.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Habitable_Rank</span></code>: the standard metric restricted to planets in or near the habitable
@@ -268,7 +271,7 @@ zone of their host star.</p></li>
 suited to long-term monitoring campaigns:</p></li>
 </ul>
 <div class="math notranslate nohighlight">
-\[\cal D_\text{multi} = \cal D \cdot P^{-1/2}\]</div>
+\[\mathcal{D}_{\text{multi}} = \mathcal{D} \cdot P^{-1/2}\]</div>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Multi_Transit_Habitable_Rank</span></code>: the habitable-zone variant of the multi-transit
 metric.</p></li>
@@ -325,49 +328,356 @@ weighted transit coverage model and a moonlight noise model, and combines these 
 Phase One metric score to produce a final event weight.</p>
 <p>Phase Two is the most computationally intensive stage of the pipeline, running at
 approximately 1-2 seconds per target for a viable target list of ~1000 planets in
-an 8-month observation window. Mltiprocessing is applied at this stage using <code class="docutils literal notranslate"><span class="pre">joblib</span></code>,
+an 8-month observation window. Multiprocessing is applied at this stage using <code class="docutils literal notranslate"><span class="pre">joblib</span></code>,
 distributing the workload across available CPU cores as configured by
 <a class="reference internal" href="api.html#preface.configs.MultiprocessingConfigurations" title="preface.configs.MultiprocessingConfigurations"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiprocessingConfigurations</span></code></a>.</p>
-<p>PhaseTwo proceeds through three steps:
-- <code class="docutils literal notranslate"><span class="pre">MultiprocessingWrapper</span></code>: Initializes necessary lookup tables and <code class="docutils literal notranslate"><span class="pre">joblib</span></code> multiprocessing for Phase Two
-- <code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code>: For each planet, find and rank viable transit events in the given observing window
-- <code class="docutils literal notranslate"><span class="pre">PostCleaner</span></code>: Assembles <code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code> outputs for each planet, then generates two final ranked transit datasets</p>
+<p>PhaseTwo proceeds through three steps:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">MultiprocessingWrapper</span></code>: Initializes necessary lookup tables and <code class="docutils literal notranslate"><span class="pre">joblib</span></code> multiprocessing for Phase Two</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code>: For each planet, find and rank viable transit events in the given observing window</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PostCleaner</span></code>: Assembles <code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code> outputs for each planet, then generates two final ranked transit datasets</p></li>
+</ul>
 <section id="step-1-multiprocessingwrapper">
 <h3>Step 1: <code class="docutils literal notranslate"><span class="pre">MultiprocessingWrapper</span></code><a class="headerlink" href="#step-1-multiprocessingwrapper" title="Link to this heading"></a></h3>
 <p>In order to reduce per-planet runtime during <code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code>, <code class="docutils literal notranslate"><span class="pre">MultiprocessingWrapper</span></code> first
 constructs the necessary lookup tables to be used across all parallel jobs, then dispatches those jobs via <code class="docutils literal notranslate"><span class="pre">joblib</span></code>.</p>
 <p>The following preparatory steps are executed in the following sequence:</p>
-<ol class="arabic simple">
-<li><dl class="simple">
-<dt><strong>IERS table update</strong>: Downloads or refreshes the IERS-A Earth orientation table required by Astropy for</dt><dd><p>accurate coordinate transformations, falling back to an IERS mirror on network timeout.
+<p><strong>IERS table update.</strong> Downloads or refreshes the IERS-A Earth orientation table required by Astropy for
+accurate coordinate transformations, falling back to an IERS mirror on network timeout.
 The cached copy is refreshed automatically if older than 7 days.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><strong>Telescope location &amp; timezone resolution</strong>: Gathers the IANA timezone of the telescope via its stored latitude</dt><dd><p>and longitude for local-time handling during graphical output during multiprocessing.</p>
-</dd>
-</dl>
-</li>
-</ol>
-<ol class="arabic simple" start="4">
-<li><dl class="simple">
-<dt><strong>Sun &amp; Moon AltAz lookup table</strong>: Precomputes Sun and Moon altitude/azimuth for every minute across the provided</dt><dd><p>observation window (padded by 2 days). Positions are first computed at 10-minute precision in the local <code class="docutils literal notranslate"><span class="pre">AltAz</span></code> frame,
+<p><strong>Telescope location &amp; timezone resolution.</strong> Gathers the IANA timezone of the telescope via its stored latitude
+and longitude for local-time handling during graphical output during multiprocessing.</p>
+<p><strong>Sun &amp; Moon AltAz lookup table.</strong> Precomputes Sun and Moon altitude/azimuth for every minute across the provided
+observation window (padded by 2 days). Positions are first computed at 10-minute precision in the local <code class="docutils literal notranslate"><span class="pre">AltAz</span></code> frame,
 then up-sampled to 1-minute resolution via cubic spline interpolation in Cartesian coordinates. Saved as a compressed Parquet file.</p>
-</dd>
-</dl>
-</li>
-<li><p><strong>Lunar brightness lookup table</strong>: If <code class="docutils literal notranslate"><span class="pre">toggle_moonlight_noise</span></code> is enabled, precomputes the Moon’s hourly apparent magnitude
-using the Allen (1976) empirical phase-angle formula, with lunar phase angles from <code class="docutils literal notranslate"><span class="pre">pyephem</span></code> and per-filter full-Moon magnitudes
+<p><strong>Lunar brightness lookup table.</strong> If <code class="docutils literal notranslate"><span class="pre">toggle_moonlight_noise</span></code> is enabled, precomputes the Moon’s hourly apparent magnitude
+using the Allen (1976) empirical phase-angle formula</p>
+<div class="math notranslate nohighlight">
+\[m_\text{moon} (\lambda, \phi) = m_\text{full moon} (\lambda) + 0.026|\phi| + 4 \times 10^{-9} \cdot \phi^4\]</div>
+<p>with lunar phase angles <span class="math notranslate nohighlight">\(\phi\)</span> from <code class="docutils literal notranslate"><span class="pre">pyephem</span></code> and per-filter full-Moon magnitudes
 empirically calculated from Toledano et al. (2024)’s LIME toolbox sampling during October 2025 to May 2026 at TNT ULTRASPEC.
-Per-filter effective wavelengths are retrieved from Bessell et al. (1998) and Fukugita et al. (1996). Saved as a compressed Parquet file.</p></li>
-</ol>
+Per-filter effective wavelengths <span class="math notranslate nohighlight">\(\lambda\)</span> are retrieved from Bessell et al. (1998) and Fukugita et al. (1996).
+Saved as a compressed Parquet file.</p>
 <p>With all lookup tables in place, <code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code> is then dispatched per viable planet as a <code class="docutils literal notranslate"><span class="pre">joblib</span></code> job, with progress
 tracked via <code class="docutils literal notranslate"><span class="pre">tqdm</span></code>.</p>
 </section>
 <section id="step-2-multiprocessingprocess">
 <h3>Step 2: <code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code><a class="headerlink" href="#step-2-multiprocessingprocess" title="Link to this heading"></a></h3>
-<p>(WIP!)</p>
+<p><code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code> is the core computational step of Phase Two, and the most computationally
+expensive section of the PREFACE pipeline. For this reason, it is dispatched once per viable planet as a
+<code class="docutils literal notranslate"><span class="pre">joblib</span></code> job. <code class="docutils literal notranslate"><span class="pre">MultiprocessingProcess</span></code> is divided into the following subprocesses: ephemeris propagation,
+transit contact times calculation, target local coordinate computation, nighttime observability classification,
+airmass-weighted scoring, transit coverage scoring, moonlight noise scoring, final transit decision metric
+scoring, and optional graphical output for every predicted transit event within the observing window.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>TEPCat ephemerides are given in Barycentric Julian Date in Barycentric Dynamical Time
+(BJD<sub>TDB</sub>), which can differ from standard UTC by up to approximately 10 minutes
+due to relativistic corrections and accumulated leap seconds. This offset is appropriately
+handled internally within the pipeline.</p>
+</div>
+<p><strong>Ephemeris propagation.</strong>
+Transit first-contact times <span class="math notranslate nohighlight">\(T_1\)</span> are propagated forward from the TEPCat reference
+ephemeris. The reference mid-transit time <span class="math notranslate nohighlight">\(T_0\)</span> (in BJD<sub>TDB</sub>) is converted to a
+first-contact time by subtracting half the transit duration <span class="math notranslate nohighlight">\(t_{14}\)</span>, and the integer
+epoch range spanning the observing window is computed. For each epoch <span class="math notranslate nohighlight">\(n\)</span>, the transit
+start time <span class="math notranslate nohighlight">\(T_{1,n}\)</span> and its associated timing uncertainty <span class="math notranslate nohighlight">\(\sigma_n\)</span> are</p>
+<div class="math notranslate nohighlight">
+\[T_{1,n} = T_{1,0} + n \cdot P\]</div>
+<div class="math notranslate nohighlight">
+\[\sigma_n = \sqrt{\sigma_{T_0}^2 + \left( n \cdot \sigma_P \right)^2}\]</div>
+<p><strong>Transit contact time calculation.</strong>
+For each predicted transit, the four contact times are derived from the transit geometry. The
+mid-transit <span class="math notranslate nohighlight">\(T_0\)</span> and fourth contact <span class="math notranslate nohighlight">\(T_4\)</span> follow directly from <span class="math notranslate nohighlight">\(T_1\)</span> and
+<span class="math notranslate nohighlight">\(t_{14}\)</span></p>
+<div class="math notranslate nohighlight">
+\[T_0 = T_1 + (0.5 \cdot t_{14}), \qquad T_4 = T_1 + t_{14}\]</div>
+<p>The internal contacts <span class="math notranslate nohighlight">\(T_2\)</span> and <span class="math notranslate nohighlight">\(T_3\)</span> are derived from the transit
+geometry model of Seager &amp; Mallén-Ornelas (2003), from which</p>
+<div class="math notranslate nohighlight">
+\[t_{23} = \frac{P}{\pi} \arcsin \left( \frac{ \sqrt{(R_*-R_p)^2 - (bR_*)^2} }{a} \right)\]</div>
+<p>and the ingress/egress duration</p>
+<div class="math notranslate nohighlight">
+\[t_{12} = \frac{|t_{14} - t_{23}|}{2}\]</div>
+<p>follows. Subsequently,</p>
+<div class="math notranslate nohighlight">
+\[T_2 = T_1 + t_{12}, \qquad T_4 = T_4 - t_{12}\]</div>
+<p>For grazing transits where impact parameter <span class="math notranslate nohighlight">\(b = 0\)</span> and <span class="math notranslate nohighlight">\(T_2\)</span>
+is unphysical, <span class="math notranslate nohighlight">\(T_2\)</span> and <span class="math notranslate nohighlight">\(T_3\)</span> are both set to <span class="math notranslate nohighlight">\(T_0\)</span> and the event
+is treated as having no flat bottom.</p>
+<p>Finally, One-hour baseline windows are appended on either side of the transit:</p>
+<div class="math notranslate nohighlight">
+\[T_\mathrm{BaseStart} = T_1 - 1\,\mathrm{hr}, \qquad T_\mathrm{BaseEnd} = T_4 + 1\,\mathrm{hr}\]</div>
+<p><strong>Target local coordinate computation.</strong>
+The target’s altitude and azimuth over time are computed for a 30-hour window (from 12 hours before closest
+midnight to 18 hours after) via Astropy’s <code class="docutils literal notranslate"><span class="pre">transform_to()</span></code> method. To minimise per-event overhead, all time
+windows are batched and the altitude/azimuth coordinate transforms are performed simultaneously at
+10-minute resolution in a single vectorised call, then interpolated to 1-minute resolution via cubic spline
+in Cartesian coordinates. Sun and Moon positions are drawn directly from the precomputed lookup table.</p>
+<p><strong>Nighttime observability classification.</strong>
+First, the start and end of astronomical night are identified by detecting zero-crossings of the
+Sun’s altitude profile relative to the <span class="math notranslate nohighlight">\(-18°\)</span> astronomical twilight threshold, distinguishing
+sunfall (descending) from sunrise (ascending) crossings. Several multi-night edge cases are
+handled explicitly such that the night starts/ends are bounded by the 30-hour window and contain
+the corresponding transit’s mid-transit time.</p>
+<p>Then, four binary altitude spot-check conditions are evaluated over the transit time window,
+nighttime window, and transit-night overlap windows.</p>
+<ul class="simple">
+<li><p><em>Target reaches minimum altitude:</em> target exceeds observable altitude at any point during the transit
+or night.</p></li>
+<li><p><em>Target above minimum altitude for entire transit:</em> target remains above <span class="math notranslate nohighlight">\(30°\)</span>
+throughout the full transit-plus-baseline window.</p></li>
+<li><p><em>Target reaches minimum altitude at night:</em> target exceeds <span class="math notranslate nohighlight">\(30°\)</span> at some point during
+the observing night.</p></li>
+<li><p><em>Target reaches minimum altitude during transit at night:</em> target exceeds <span class="math notranslate nohighlight">\(30°\)</span> during
+the overlap of the transit window and the night.</p></li>
+</ul>
+<p>These conditions are combined into <strong>strict</strong> (<code class="docutils literal notranslate"><span class="pre">F</span></code>) and <strong>lax</strong> (<code class="docutils literal notranslate"><span class="pre">P</span></code>) altitude sets and
+evaluated against timing conditions on how the transit overlaps the night, producing one of the
+following internal rank markers:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 15.0%" />
+<col style="width: 85.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Rank</p></th>
+<th class="head"><p>Condition</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">03_F</span></code></p></td>
+<td><p>Night contains full transit + baselines.
+<br /> Full transit + baselines always above observable altitude.
+<br /> Target visible at some point during night.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">03_P</span></code></p></td>
+<td><p>Night contains full transit + baselines.
+<br /> Full transit + baselines at observable altitude during transit or during night.
+<br /> Transit observable at some point during night.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">02_F</span></code></p></td>
+<td><p>Night contains full transit but not full baselines.
+<br /> Full transit + baselines always above observable altitude.
+<br /> Target visible at some point during night.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">02_P</span></code></p></td>
+<td><p>Night contains full transit but not full baselines.
+<br /> Full transit + baselines at observable altitude during transit or during night.
+<br /> Transit observable at some point during night.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">01_F</span></code></p></td>
+<td><p>Night contains partial transits.
+<br /> Full transit + baselines always above observable altitude.
+<br /> Target visible at some point during night.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">01_P</span></code></p></td>
+<td><p>Night contains partial transits.
+<br /> Full transit + baselines at observable altitude during transit or during night.
+<br /> Transit observable at some point during night.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">X</span></code></p></td>
+<td><p>No part of the transit is observable. Event is discarded.</p></td>
+</tr>
+</tbody>
+</table>
+<p>where the “minimum observable altitude” is <span class="math notranslate nohighlight">\(30°\)</span>, which corresponds to an airmass of 2.
+The classification follows a top-down hierarchy: the strictest condition (<code class="docutils literal notranslate"><span class="pre">03_F</span></code>) is tested
+first, and the event falls through until a matching condition is found.</p>
+<p><strong>Integration limits.</strong>
+For events ranked <code class="docutils literal notranslate"><span class="pre">01</span></code> or above, the usable observing window is bounded by integration limits
+<span class="math notranslate nohighlight">\(L_1\)</span> and <span class="math notranslate nohighlight">\(L_2\)</span>, defined as whichever is more
+restrictive between astronomical night and the times at which the target crosses the minimum
+observable altitude.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">F</span></code>-ranked events, where the target remains above <span class="math notranslate nohighlight">\(30°\)</span> throughout the transit:</p>
+<div class="math notranslate nohighlight">
+\[L_1 = \max\left( T_\mathrm{BaseStart},\; T_\mathrm{sunfall} \right), \qquad
+L_2 = \min\left( T_\mathrm{BaseEnd},\; T_\mathrm{sunrise} \right)\]</div>
+<p>For <code class="docutils literal notranslate"><span class="pre">P</span></code>-ranked events, the minimum-altitude crossing time(s) of the target’s path are
+identified by detecting zero-crossings of altitude relative to <span class="math notranslate nohighlight">\(30°\)</span>. A conditional logic
+gate handles scenarios including one or two crossing points, a rising or setting target, and
+varying orderings of the sunfall, altitude crossing, and transit contact times. Any event for which
+<span class="math notranslate nohighlight">\(L_2 \leq L_1\)</span> after limit assignment is downgraded to rank <code class="docutils literal notranslate"><span class="pre">X</span></code> and discarded.</p>
+<p><strong>Airmass-weighted scoring.</strong>
+The atmospheric seeing PSF <span class="math notranslate nohighlight">\(\Theta\)</span> scales with airmass <span class="math notranslate nohighlight">\(X = \csc(i)\)</span> at an altitude angle
+of <span class="math notranslate nohighlight">\(i\)</span>, as <span class="math notranslate nohighlight">\(\Theta \propto \lambda^{-1/5} \cdot X^{3/5}\)</span>. To penalise events at low altitude,
+an airmass weight is computed by the inverse of an intergral that describes how the airmass changes over the
+usable observing window:</p>
+<div class="math notranslate nohighlight">
+\[W_\mathrm{airmass} = 3 \left( \frac{L_2-L_1}{\int_{L_1}^{L_2}X(t)^{3/5} dt} - \frac{2}{3} \right)\]</div>
+<p>The weight is amended to return a value of 1 for targets constantly at the zenith, decline steeply as
+altitude decreases, and have a value of 0 for targets constantly at <span class="math notranslate nohighlight">\(30^\circ\)</span> altitude.</p>
+<p><strong>Transit coverage scoring.</strong>
+Baseline coverage before and after the transit is essential for fitting the light curve and
+recovering limb-darkening parameters. The observable fraction of each of five segments within
+<span class="math notranslate nohighlight">\([L_1, L_2]\)</span> is evaluated:</p>
+<ol class="arabic simple">
+<li><p>Pre-transit baseline (<span class="math notranslate nohighlight">\(T_\mathrm{BaseStart}\)</span> to <span class="math notranslate nohighlight">\(T_1\)</span>)</p></li>
+<li><p>Ingress (<span class="math notranslate nohighlight">\(T_1\)</span> to <span class="math notranslate nohighlight">\(T_2\)</span>)</p></li>
+<li><p>Full mid-transit (<span class="math notranslate nohighlight">\(T_2\)</span> to <span class="math notranslate nohighlight">\(T_3\)</span>)</p></li>
+<li><p>Egress (<span class="math notranslate nohighlight">\(T_3\)</span> to <span class="math notranslate nohighlight">\(T_4\)</span>)</p></li>
+<li><p>Post-transit baseline (<span class="math notranslate nohighlight">\(T_4\)</span> to <span class="math notranslate nohighlight">\(T_\mathrm{BaseEnd}\)</span>)</p></li>
+</ol>
+<p>For each segment, the observable sub-interval is clipped to the overlap of the segment with
+the visibility window <span class="math notranslate nohighlight">\([L_1, L_2]\)</span>:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 37.5%" />
+<col style="width: 37.5%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Segment</p></th>
+<th class="head"><p>Lower clipped limit</p></th>
+<th class="head"><p>Upper clipped limit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Pre-transit baseline</p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{BS}1} = \max(L_1,\,T_\mathrm{BaseStart})\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{BS}2} = \min(L_2,\,T_1)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>Ingress</p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{In}1} = \max(L_1,\,T_1)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{In}2} = \min(L_2,\,T_2)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>Full mid-transit</p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{Tr}1} = \max(L_1,\,T_2)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{Tr}2} = \min(L_2,\,T_3)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>Egress</p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{Eg}1} = \max(L_1,\,T_3)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{Eg}2} = \min(L_2,\,T_4)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>Post-transit baseline</p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{BE}1} = \max(L_1,\,T_4)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_{\mathrm{BE}2} = \min(L_2,\,T_\mathrm{BaseEnd})\)</span></p></td>
+</tr>
+</tbody>
+</table>
+<p>In cases where the segment lies entirely outside the visibility window, both the clipped limits are set to zero.</p>
+<p>These clipped lengths are combined into three weight components:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}W_\mathrm{base}  &amp;= \frac{(L_{\mathrm{BS}2} - L_{\mathrm{BS}1})
+                           + (L_{\mathrm{BE}2} - L_{\mathrm{BE}1})}{\text{2 hr}} \\
+W_\mathrm{trans} &amp;= \frac{L_{\mathrm{Tr}2} - L_{\mathrm{Tr}1}}{T_3 - T_2} \\
+W_\mathrm{inout} &amp;= \frac{(L_{\mathrm{In}2} - L_{\mathrm{In}1})
+                           + (L_{\mathrm{Eg}2} - L_{\mathrm{Eg}1})}{2\,(T_2 - T_1)}\end{split}\]</div>
+<p>To which the composite event weight is:</p>
+<div class="math notranslate nohighlight">
+\[W_\mathrm{event} = W_\mathrm{base} \cdot W_\mathrm{trans} \cdot W_\mathrm{inout}\]</div>
+<p>For grazing transits (<span class="math notranslate nohighlight">\(T_2 = T_3\)</span>, so <span class="math notranslate nohighlight">\(W_\mathrm{trans}\)</span> is undefined), the
+mid-transit term is omitted:</p>
+<div class="math notranslate nohighlight">
+\[W_\mathrm{event} = W_\mathrm{base} \cdot W_\mathrm{inout}\]</div>
+<p><strong>Moonlight noise scoring.</strong>
+If <code class="docutils literal notranslate"><span class="pre">toggle_moonlight_noise</span></code> is enabled, a moonlight noise weight is computed using the atmospheric
+scattering model of Winkler (2022), incorporating both Rayleigh and Mie scattering components.
+The scattered moonlight intensity after one-time scattering <span class="math notranslate nohighlight">\(I_{L1}\)</span> (in flux/arcsec<sup>2</sup>) is modelled as:</p>
+<div class="math notranslate nohighlight">
+\[I_{L1} = p(\theta) \cdot F^*_L  \cdot \frac{\tau_R + \tau_M}{\tau}  \cdot
+          \sec\zeta\, \frac{e^{-\tau \sec\zeta} - e^{-\tau \sec z}}{\sec z - \sec\zeta}\]</div>
+<p>where the composite scattering phase function <span class="math notranslate nohighlight">\(p(\theta)\)</span> is a weighted combination of the
+Rayleigh and Mie phase functions:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}p(\theta) &amp;= \frac{\tau_R\, p_R(\theta) + \tau_M\, p_M(\theta)}{\tau_R + \tau_M} \\
+p_R(\theta) &amp;= \frac{1}{4\pi} \frac{3(1-\chi)}{4(1+2\chi)}
+               \left[\frac{1+3\chi}{1-\chi} + \cos^2\theta\right] \\
+p_M(\theta) &amp;= \frac{1}{4\pi} \frac{1-g^2}{(1+g^2-2g\cos\theta)^{3/2}}\end{split}\]</div>
+<p>The quantities appearing in these expressions are defined as follows:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 12.5%" />
+<col style="width: 87.5%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(F^*_L\)</span></p></td>
+<td><p>Top-of-atmosphere (TOA) lunar flux (in flux),
+<br /> retrieved from precomputed lunar brightness LUT at start of observation</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\zeta\)</span></p></td>
+<td><p>Zenith angle of the observation target</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(z\)</span></p></td>
+<td><p>Zenith angle of the Moon</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\theta\)</span></p></td>
+<td><p>Moon-target angular separation angle</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\tau_R\)</span></p></td>
+<td><p>Rayleigh scattering optical depth</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\tau_M\)</span></p></td>
+<td><p>Mie (aerosol) scattering optical depth,
+<br /> sourced from the configurable <code class="docutils literal notranslate"><span class="pre">scattering_aod</span></code> parameter</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\tau_A\)</span></p></td>
+<td><p>Absorption optical depth,
+<br /> sourced from the configurable <code class="docutils literal notranslate"><span class="pre">absorption_aod</span></code> parameter</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\tau\)</span></p></td>
+<td><p>Total optical depth (<span class="math notranslate nohighlight">\(\tau = \tau_R + \tau_M + \tau_A\)</span>)</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\chi\)</span></p></td>
+<td><p>Rayleigh depolarisation factor, fixed at <span class="math notranslate nohighlight">\(\chi = 0.0148\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(g\)</span></p></td>
+<td><p>Aerosol asymmetry factor,
+<br /> sourced from the configurable <code class="docutils literal notranslate"><span class="pre">asymmetry_factor</span></code> parameter;
+<br /> typically in the range 0.5-0.8</p></td>
+</tr>
+</tbody>
+</table>
+<p>The Rayleigh scattering optical depth is computed from the instrument altitude and filter
+wavelength as:</p>
+<div class="math notranslate nohighlight">
+\[\tau_R = e^{-h/H}\,(1.229 \times 10^{10})\,\lambda^{-4.05}\]</div>
+<p>where <span class="math notranslate nohighlight">\(h\)</span> is the instrument altitude in metres, <span class="math notranslate nohighlight">\(H = 8500\)</span> m is Earth’s scale
+height, and <span class="math notranslate nohighlight">\(\lambda\)</span> is the filter’s effective wavelength in nm.</p>
+<p>The scattered moonlight intensity <span class="math notranslate nohighlight">\(I_{L1}\)</span> is then converted from flux/arcsec<sup>2</sup> to mag/arcsec<sup>2</sup> (<span class="math notranslate nohighlight">\(\mu_\mathrm{bg,moon}\)</span>) using filter flux
+zeropoints. The sky brightness contribution over a sky patch of area <span class="math notranslate nohighlight">\(A\)</span>
+(arcsec<sup>2</sup>) is:</p>
+<div class="math notranslate nohighlight">
+\[m_\mathrm{bg,moon} = \mu_\mathrm{bg,moon} - 2.5\log(A)\]</div>
+<p>The SNR reduction factor, referred to as the moonlight noise weight, is then derived from the
+ratio of the new and old detectability scores <span class="math notranslate nohighlight">\(\mathcal{D}\)</span>, which are directly
+proportional to the SNR. The resulting moonlight noise weight is:</p>
+<div class="math notranslate nohighlight">
+\[W_\mathrm{Moon} = \left(1 + \frac{10^{-0.4(m_\mathrm{bg,moon} - \gamma)}}
+                  {10^{-0.4 m_*} + 10^{-0.4 m_\mathrm{sky}}}\right)^{-0.5}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\gamma\)</span> is a configurable amplification factor that adjusts the effective
+moon background brightness to provide stronger suppression under bright moonlight conditions.
+The default value (<span class="math notranslate nohighlight">\(\gamma = 10\)</span>) is calibrated such that, for a full-moon sky
+background of <span class="math notranslate nohighlight">\(\mu_\mathrm{bg,moon} = 17\,\mathrm{mag/arcsec^2}\)</span>, a sky patch of
+area <span class="math notranslate nohighlight">\(A = 10\,\mathrm{arcsec^2}\)</span>, and a target of magnitude
+<span class="math notranslate nohighlight">\(m_* = 12\)</span>, the resulting moonlight noise weight is approximately
+<span class="math notranslate nohighlight">\(W_\mathrm{Moon} \approx 0.1\)</span>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">toggle_moonlight_noise</span></code> is disabled, <span class="math notranslate nohighlight">\(W_\mathrm{Moon} = 1\)</span>.</p>
+<p><strong>Final transit decision metric.</strong>
+Finally, the final decision metric for a given transit event is the product of four terms:</p>
+<div class="math notranslate nohighlight">
+\[\mathcal{D}_\mathrm{final} = \mathcal{D} \cdot W_\mathrm{airmass} \cdot W_\mathrm{event} \cdot W_\mathrm{Moon}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{D}\)</span> is the Phase One metric score for the planet under the chosen
+<code class="docutils literal notranslate"><span class="pre">metric_mode</span></code>. This formulation ensures the final ranking reflects both the intrinsic
+spectroscopic value of a target (Phase One) and the practical quality of the specific observing
+opportunity (Phase Two).</p>
+<p><strong>Graphical output.</strong>
+If <code class="docutils literal notranslate"><span class="pre">toggle_graph_outputs</span></code> is enabled and the event weight <span class="math notranslate nohighlight">\(W_\mathrm{event}\)</span> meets or exceeds
+<code class="docutils literal notranslate"><span class="pre">event_weight_graph_threshold</span></code>, a sky chart is generated showing the target’s altitude path
+(coloured by azimuth), the Moon’s path, the observing night bounded by astronomical twilight,
+the transit window and baseline shaded in red, and altitude floor and ceiling limits. Moon illumination
+and closest lunar separation are annotated. Plots are saved as JPEG files in <code class="docutils literal notranslate"><span class="pre">phase_2/graph/</span></code> per transit
+labelled with the event weight, internal rank, planet name, instrument, and transit time in local time.</p>
+<p><strong>Per-planet output.</strong>
+All computed quantities (contact times, internal rank, UTC observation start and end, airmass
+metric, segment weights, event weight, moon noise metric, and final metric) are written to an
+individual CSV in <code class="docutils literal notranslate"><span class="pre">phase_2/individual_planets/</span></code>. Internal state lists are cleared at the end
+of each planet’s processing to prepare for the next job.</p>
 </section>
 <section id="step-3-postcleaner">
 <h3>Step 3: <code class="docutils literal notranslate"><span class="pre">PostCleaner</span></code><a class="headerlink" href="#step-3-postcleaner" title="Link to this heading"></a></h3>
@@ -375,14 +685,14 @@ tracked via <code class="docutils literal notranslate"><span class="pre">tqdm</s
 <code class="docutils literal notranslate"><span class="pre">PostCleaner</span></code> assembles the final pipeline outputs:</p>
 <p><strong>Full event list.</strong> All per-planet CSV files are read then merged into a single DataFrame.
 Unobservable events (internal rank <code class="docutils literal notranslate"><span class="pre">X</span></code>) are removed. The remaining events are sorted by
-final transit metric <span class="math notranslate nohighlight">\(\cal{D}_\mathrm{final}\)</span> from highest to lowest and
+final transit metric <span class="math notranslate nohighlight">\(\mathcal{D}_\mathrm{final}\)</span> from highest to lowest and
 written to <code class="docutils literal notranslate"><span class="pre">full_ranked_event_list/</span></code>. This file is the primary output of the pipeline
 and can be used directly to construct observing schedules.</p>
 <p><strong>Cumulative observability scores.</strong> For each planet, all events for which event weight
 <span class="math notranslate nohighlight">\(W_\mathrm{event} &gt; 0.5\)</span> (full transit capture with at least 50% baseline coverage
 on both sides) are identified. Their <span class="math notranslate nohighlight">\(\cal{D}_\mathrm{final}\)</span> scores are summed
-to produce a cumulative observability score, and the total count of qualifying events is recorded.
-These results are written to <code class="docutils literal notranslate"><span class="pre">cumulative_observability_scores/</span></code>.</p>
+to produce a “cumulative observability score”, and the total count of qualifying events is
+recorded. These results are written to <code class="docutils literal notranslate"><span class="pre">cumulative_observability_scores/</span></code>.</p>
 <p>This product is intended to help campaign planners distinguish between planets that offer
 a single high-priority window and those that present multiple well-scored opportunities
 throughout the observation window.</p>

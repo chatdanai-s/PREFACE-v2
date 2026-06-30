@@ -16,7 +16,7 @@ Example
 -------
 
 The following example runs PREFACE over an observing window from October 2025
-to May 2026, using the TNT ULTRASPEC instrument with moonlight modelling and
+to December 2025, using the TNT ULTRASPEC instrument with moonlight modelling and
 multiprocessing enabled:
 
 .. code-block:: python
@@ -32,7 +32,7 @@ multiprocessing enabled:
     )
 
     ObsStart = dt.datetime(2025, 10, 1)
-    ObsEnd = dt.datetime(2026, 5, 31)
+    ObsEnd = dt.datetime(2026, 1, 1)
     OutputFolder = r"C:\PREFACE_Output"
 
     TelescopeConfigs = TelescopeConfigurations(
@@ -58,7 +58,7 @@ multiprocessing enabled:
         scattering_aod=0.2,
         absorption_aod=0.3,
         asymmetry_factor=0.6,
-        moonlight_amplification_factor=5
+        moonlight_amplification_factor=10
     )
 
     MultiprocessingConfigs = MultiprocessingConfigurations(
@@ -72,4 +72,3 @@ multiprocessing enabled:
         MoonlightNoiseConfigurations=MoonlightConfigs,
         MultiprocessingConfigurations=MultiprocessingConfigs
     )
-

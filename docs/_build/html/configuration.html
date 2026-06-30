@@ -86,7 +86,7 @@
   <section id="configuration">
 <h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
 <p>PREFACE uses four configuration classes to control pipeline behaviour. Each is
-passed as a keyword argument to <code class="xref py py-func docutils literal notranslate"><span class="pre">run_preface()</span></code>.</p>
+passed as a keyword argument to <a class="reference internal" href="api.html#preface.run_preface" title="preface.run_preface"><code class="xref py py-func docutils literal notranslate"><span class="pre">run_preface()</span></code></a>.</p>
 <nav class="contents local" id="configuration-classes">
 <p class="topic-title">Configuration Classes</p>
 <ul class="simple">
@@ -137,7 +137,7 @@ passed as a keyword argument to <code class="xref py py-func docutils literal no
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">filter_name</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p>Photometric filter to be used.</p></td>
-<td><p>Must be valid for the selected instrument. See <code class="xref py py-func docutils literal notranslate"><span class="pre">get_available_filters_list()</span></code>.</p></td>
+<td><p>Must be valid for the selected instrument. See <a class="reference internal" href="api.html#preface.get_available_filters_list" title="preface.get_available_filters_list"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_available_filters_list()</span></code></a>.</p></td>
 <td><p><em>required</em></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">run_mode</span></code></p></td>
@@ -257,7 +257,7 @@ will stop and report accordingly if an unsupported combination is detected.</p>
     <span class="n">scattering_aod</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
     <span class="n">absorption_aod</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
     <span class="n">asymmetry_factor</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
-    <span class="n">moonlight_amplification_factor</span><span class="o">=</span><span class="mi">5</span>
+    <span class="n">moonlight_amplification_factor</span><span class="o">=</span><span class="mi">10</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -286,7 +286,7 @@ will stop and report accordingly if an unsupported combination is detected.</p>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scattering_aod</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
-<td><p>Atmospheric scattering aerosol optical depth.</p></td>
+<td><p>Atmospheric Mie scattering aerosol optical depth.</p></td>
 <td><p>Non-negative.</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.2</span></code></p></td>
 </tr>
@@ -306,7 +306,7 @@ will stop and report accordingly if an unsupported combination is detected.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
 <td><p>Empirical scaling controlling modelled moonlight influence.</p></td>
 <td><p>Positive value ≥ <code class="docutils literal notranslate"><span class="pre">5</span></code> recommended.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">5</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
 </tr>
 </tbody>
 </table>

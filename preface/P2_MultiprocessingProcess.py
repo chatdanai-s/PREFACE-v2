@@ -35,8 +35,9 @@ from scipy.interpolate import interp1d
 from dateutil.relativedelta import relativedelta
 
 # Forces astropy to use IERS cache
-from astropy.utils.iers import conf as iers_conf
-iers_conf.auto_max_age = None
+from astropy.utils import iers
+iers.conf.auto_max_age = None
+iers.conf.auto_download = False
 
 # Cache all LUTs outside main function, as to not reopen everytime
 _lut_cache = {}

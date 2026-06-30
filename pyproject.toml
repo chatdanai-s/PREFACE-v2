@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "preface_spearnet"
-version = "2.0.0b4"
+version = "2.0.0b5"
 description = "An Automated Pipeline for the Selection of Transmission Spectroscopy Candidates"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -49,9 +49,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/chatdanai-s/PREFACE"
 BugTracker = "https://github.com/chatdanai-s/PREFACE/issues"
-# Documentation = "TBA"
+Documentation = "https://preface.readthedocs.io/"
 
-[tool.setuptools] # setuptools-specific settings not covered by PEP 621
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -62,4 +61,9 @@ exclude = ["__pycache__", "tests", "docs"]
 preface = [
     "csvbank/core/*",
     "supplementary_files/*.pdf",
+]
+
+[tool.setuptools.exclude-package-data]
+preface = [
+    "csvbank/core/unused_data/*",
 ]

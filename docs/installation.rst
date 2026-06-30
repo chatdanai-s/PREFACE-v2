@@ -8,7 +8,7 @@ Install the latest stable release using ``pip``::
 
     pip install preface-spearnet
 
-PREFACE requires Python 3.8 or later.
+PREFACE requires Python 3.9 or later.
 
 Installing from Source
 ----------------------

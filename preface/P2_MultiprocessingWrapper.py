@@ -30,9 +30,6 @@ import astropy.coordinates as ac
 from astropy.coordinates import AltAz, get_sun, get_body, SkyCoord
 from scipy.interpolate import interp1d
 
-# Forces astropy to use IERS cache
-from astropy.utils.iers import conf as iers_conf
-iers_conf.auto_max_age = None
 
 # Get parameters associated with UBVRI/ugriz filters
 def getFilterParams(CSV_core_folder, filter_name):
@@ -104,32 +101,36 @@ def interpolate_altaz(obs_times, altazs, dense_times):
 # A manual download on a shorter timescale is needed to prevent multiple checks/downloads when multiprocessing.
 # The hash used to denote the file also updates every 7 days, so this must also be tracked and updated in a .txt file.
 def download_IERS(CSV_core_folder):
-    IERS_A_URL = 'https://datacenter.iers.org/data/9/finals2000A.all'
+    from astropy.utils import iers
+    iers.conf.auto_max_age = None
+    iers.conf.auto_download = False
+
+    # IERS_A_URL = 'https://datacenter.iers.org/data/9/finals2000A.all' # Website does not respond as of 30 June 2026
+    IERS_A_URL = 'https://maia.usno.navy.mil/ser7/finals2000A.all'
     IERS_PATH  = CSV_core_folder / 'IERSPath.txt'
 
     if data.is_url_in_cache(IERS_A_URL):
-        data.download_file(IERS_A_URL, cache=True, show_progress=True)  # Get the name of the cached file.
+        cached_path = data.download_file(IERS_A_URL, cache=True, show_progress=True)  # Get the name of the cached file.
         with open(IERS_PATH, 'w') as IERS_File:    # Write location and new hash to .txt file for future ref.
-            c = IERS_File.write(
-                str(data.download_file(IERS_A_URL, cache=True, show_progress=True))
-                )
+            c = IERS_File.write(str(cached_path))
 
     else:
         print('[P2_MultiprocessingWrapper] Retrieving IERS table from mirror...')
         try:    # Try/except blocks are needed in case of bad internet connection. #JustEduroamThings
             r = urllib.request.Request(IERS_A_URL_MIRROR, headers={'User-Agent': 'astropy/iers', 'Accept': '*/*'})
-            u_= urllib.request.urlopen(r)
+            u_= urllib.request.urlopen(r, timeout=30).read().decode('utf-8')
+            mirror_path = CSV_core_folder / 'finals2000A.all'
             with open(IERS_PATH, 'w') as IERS_File:
                 c = IERS_File.write(str(u_))
+            with open(IERS_PATH, 'w') as IERS_File:
+                c = IERS_File.write(str(mirror_path))
             print('>> Retrieval complete.')
 
         except urllib.error.URLError:
             print('>> The request timed out; trying again...')
-            data.download_file(IERS_A_URL, cache=True, show_progress=True)  # Get the new file.
+            cached_path = data.download_file(IERS_A_URL, cache=True, show_progress=True)  # Get the new file.
             with open(IERS_PATH, 'w') as IERS_File:
-                c = IERS_File.write(
-                    str(data.download_file(IERS_A_URL, cache=True, show_progress=True))
-                    )
+                c = IERS_File.write(str(cached_path))
             print('>> Retrieval complete!')
 
     # Now that we definitely have a cached copy, we need to check its age.
@@ -139,14 +140,12 @@ def download_IERS(CSV_core_folder):
     IERS_creation = creation_date(IERS_PATH) 
     IERS_creation = dt.datetime.fromtimestamp(IERS_creation)  # Converts date to human-readable timestamp.
 
-    if dt.datetime.now() - IERS_creation >= dt.timedelta(days=7):  # If old, we update.
+    if (not os.path.isfile(c)) or (dt.datetime.now() - IERS_creation >= dt.timedelta(days=7)):  # If old, we update.
         def retrieveIERS():
             data.clear_download_cache(hashorurl=IERS_A_URL)                 # Otherwise the next line just returns the name and location of cached file!
-            data.download_file(IERS_A_URL, cache=True, show_progress=True)  # Get the new file.
+            cached_path = data.download_file(IERS_A_URL, cache=True, show_progress=True)
             with open(IERS_PATH, 'w') as IERS_File:                         # Write location and new hash to .txt file for future ref.
-                c = IERS_File.write(
-                    str(data.download_file(IERS_A_URL, cache=True, show_progress=True))
-                    )
+                c = IERS_File.write(str(cached_path))
             print('>> Retrieval complete!')
 
         print('[P2_MultiprocessingWrapper] Retrieving updated IERS table: please stand by...')
@@ -157,6 +156,13 @@ def download_IERS(CSV_core_folder):
             retrieveIERS()
     else:
         print('[P2_MultiprocessingWrapper] IERS table is up to date.')
+
+    # Explicitly load the cached table so astropy uses this exact file instead of
+    # lazily resolving IERS_Auto on first transform
+    with open(IERS_PATH, 'r') as IERS_File:
+        c = IERS_File.read().replace('\n','')
+    table = iers.IERS_A.open(c)
+    iers.earth_orientation_table.set(table)
 
 
 # Make directory for output graphs, if it doesn't exist already.

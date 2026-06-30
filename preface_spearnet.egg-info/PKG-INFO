@@ -1,11 +1,12 @@
 Metadata-Version: 2.1
 Name: preface-spearnet
-Version: 2.0.0b3
+Version: 2.0.0b5
 Summary: An Automated Pipeline for the Selection of Transmission Spectroscopy Candidates
 Author-email: Chatdanai Sawangwong <chatdanai.saw@gmail.com>, Supachai Awiphan <supachai@narit.or.th>, Orarik Tasuya <orarik@narit.or.th>, Napaporn A-thano <napaporn@narit.or.th>
 License: MIT
 Project-URL: Homepage, https://github.com/chatdanai-s/PREFACE
 Project-URL: BugTracker, https://github.com/chatdanai-s/PREFACE/issues
+Project-URL: Documentation, https://preface.readthedocs.io/
 Keywords: astronomy,exoplanets,transmission-spectroscopy,observation-planning,target-selection,astrophysics,pipeline
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: OS Independent
@@ -30,16 +31,6 @@ Requires-Dist: pyarrow>=24.0.0
 
 ---
 
-## To-do List
-As this project is work in progress, here is the current to-do list:
-- [ ] Fix a bug where the moonlight noise metric calculation sometimes return NaN
-- [ ] Finish documentation
-- [ ] (Maybe) Determine the default moonlight amplification factor that more properly and sensibly punishes full moon nights
-- [ ] (Maybe) Reduce multiprocessing overhead
-- [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
-
----
-
 ## Installation
 
 Install the latest stable release from PyPI:
@@ -60,7 +51,7 @@ Using `preface` consists of four steps:
 
 Input validation is performed automatically before pipeline execution.
 
-Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface-spearnet.readthedocs.io](https://preface-spearnet.readthedocs.io)**.
+Full documentation (configuration reference, PREFACE workflow and output descriptions, and API) is available at **[preface.readthedocs.io](https://preface.readthedocs.io)**.
 
 ### Example
 
@@ -75,7 +66,7 @@ from preface.configs import (
 )
 
 ObsStart = dt.datetime(2025, 10, 1)
-ObsEnd = dt.datetime(2026, 5, 31)
+ObsEnd = dt.datetime(2026, 1, 1)
 OutputFolder = r"C:\PREFACE_Output"
 
 TelescopeConfigs = TelescopeConfigurations(
@@ -91,7 +82,9 @@ OutputConfigs = OutputConfigurations(
     observation_end=ObsEnd,
     output_folder=OutputFolder,
     metric_mode="Rank",
-    viable_cumulative_cut=0.97
+    viable_cumulative_cut=0.90,
+    toggle_graph_outputs=True,
+    event_weight_graph_threshold=0.75
 )
 
 MoonlightConfigs = MoonlightNoiseConfigurations(
@@ -99,9 +92,7 @@ MoonlightConfigs = MoonlightNoiseConfigurations(
     scattering_aod=0.2,
     absorption_aod=0.3,
     asymmetry_factor=0.6,
-    moonlight_amplification_factor=5,
-    toggle_graph_outputs=True,
-    event_weight_graph_threshold=0.75
+    moonlight_amplification_factor=10
 )
 
 MultiprocessingConfigs = MultiprocessingConfigurations(
@@ -160,4 +151,12 @@ If you use **PREFACE** in academic work, please cite the associated publications
   month        = nov,
   url          = {https://research.manchester.ac.uk/en/studentTheses/spearnet-a-pilot-exoplanet-transmission-spectroscopy-survey}
 }
-``` -->
+```
+
+---
+
+## To-do List
+- [ ] (Maybe) Implement automatic exoplanets.eu API querying
+- [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
+
+ -->

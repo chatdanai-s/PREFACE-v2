@@ -130,7 +130,6 @@ If you use **PREFACE** in academic work, please cite the associated publications
 
 ## To-do List
 - [ ] (Maybe) Implement automatic exoplanets.eu API querying
-- [ ] (Maybe) Reduce multiprocessing overhead
 - [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
 
  -->

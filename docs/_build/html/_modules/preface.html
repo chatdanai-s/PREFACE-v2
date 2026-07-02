@@ -141,7 +141,7 @@
 <span class="sd">    ----------</span>
 <span class="sd">    instrument : str</span>
 <span class="sd">        Name of the telescope or instrument as listed in ``Scope.csv``.</span>
-<span class="sd">        See preface.telescope_list for list of available telescopes.</span>
+<span class="sd">        See ``preface.telescope_list`` for list of available telescopes.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -240,11 +240,6 @@
     <span class="n">MoonlightNoiseConfigurations</span><span class="p">:</span> <span class="n">MoonlightNoiseConfigurations</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">MultiprocessingConfigurations</span><span class="p">:</span> <span class="n">MultiprocessingConfigurations</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="k">if</span> <span class="n">MoonlightNoiseConfigurations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">MoonlightNoiseConfigurations</span> <span class="o">=</span> <span class="n">MoonlightNoiseConfigurations</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">MultiprocessingConfigurations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">MultiprocessingConfigurations</span> <span class="o">=</span> <span class="n">MultiprocessingConfigurations</span><span class="p">()</span>
-
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Execute the complete PREFACE processing pipeline.</span>
 
@@ -276,6 +271,12 @@
 <span class="sd">    None</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1"># Set default setting if no input</span>
+    <span class="k">if</span> <span class="n">MoonlightNoiseConfigurations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">MoonlightNoiseConfigurations</span> <span class="o">=</span> <span class="n">MoonlightNoiseConfigurations</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">MultiprocessingConfigurations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">MultiprocessingConfigurations</span> <span class="o">=</span> <span class="n">MultiprocessingConfigurations</span><span class="p">()</span>
+    
     <span class="c1"># Unpack variables (Some unused variables left for code readability)</span>
     <span class="n">instrument</span><span class="p">,</span> <span class="n">filter_name</span><span class="p">,</span> <span class="n">run_mode</span><span class="p">,</span> <span class="n">toggle_sky_noise</span><span class="p">,</span> <span class="n">toggle_defocus</span> <span class="o">=</span> <span class="n">TelescopeConfigurations</span><span class="o">.</span><span class="n">unpack</span>
     <span class="n">obs_start</span><span class="p">,</span> <span class="n">obs_end</span><span class="p">,</span> <span class="n">output_folder</span><span class="p">,</span> <span class="n">metric_mode</span><span class="p">,</span> <span class="n">viable_cumulative_cut</span><span class="p">,</span> <span class="n">toggle_graph_outputs</span><span class="p">,</span> <span class="n">event_weight_graph_threshold</span> <span class="o">=</span> <span class="n">OutputConfigurations</span><span class="o">.</span><span class="n">unpack</span>

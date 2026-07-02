@@ -15,7 +15,6 @@ Installing from Source
 
 To install from source, clone the repository and install in editable mode::
 
-    git clone https://github.com/your-org/preface.git
+    git clone https://github.com/chatdanai-s/PREFACE-v2.git
     cd preface
     pip install -e .
-

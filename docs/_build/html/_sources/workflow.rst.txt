@@ -153,9 +153,16 @@ relation of Edmondson et al. (2023):
      - :math:`M_p = 71.70\,M_\oplus`
  
 The Neptunian-Jovian boundary is defined as the radius at which the mass-radius relation becomes degenerate for a Jovian planet
-with an equilibrium temperature of :math:`T_\mathrm{eq} = 500\,\mathrm{K}`. Beyond this radius,  the mass-radius relation becomes
+with an equilibrium temperature of :math:`T_\mathrm{eq} = 500\,\mathrm{K}`. Beyond this radius, the mass-radius relation becomes
 degenerate, and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate
 at the boundary is given. The final estimated mass is then converted from Earth masses to Jupiter masses before being stored.
+
+.. figure:: images/MR_relation.png
+   :width: 95%
+   :align: center
+
+   **Figure.** Left: Planet mass as a function of planetary radius for the ranked target sample. Right: Distribution of planetary radii, showing the fraction of targets with measured (blue) and unmeasured (orange) masses within each radius bin.
+
 
 Step 5: ``RankMaker``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -186,7 +193,8 @@ where
 contains all telescope-dependent variables.
 
 - ``Habitable_Rank``: the standard metric restricted to planets in or near the habitable
-  zone of their host star.
+  zone of their host star. This effectively sets :math:`T_\mathrm{eq} = 1` for all targets,
+  which can be followed by an application of a temperature mask afterwards.
 - ``Multi_Transit_Rank``: a metric weighted towards planets with frequent transits,
   suited to long-term monitoring campaigns:
 
@@ -222,6 +230,12 @@ The ``Cutter`` evaluates the cumulative rank-score distribution for the calibrat
 and identifies the minimum absolute rank score at which the cumulative fraction equals
 ``viable_cumulative_cut`` (e.g. ``0.97``). This threshold score is returned and passed
 to the ``ViabilitySplitter``.
+
+.. figure:: images/Cutter.png
+   :width: 85%
+   :align: center
+
+   **Figure.** Cumulative fraction of the total ranking score contributed by the ranked target list. Horizontal dashed lines indicate the 0.80, 0.90, and 0.97 cumulative score thresholds.
 
 Step 7: ``ViabilitySplitter``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -470,6 +484,12 @@ usable observing window:
 The weight is amended to return a value of 1 for targets constantly at the zenith, decline steeply as
 altitude decreases, and have a value of 0 for targets constantly at :math:`30^\circ` altitude.
 
+.. figure:: images/AirmassMetric.png
+   :width: 80%
+   :align: center
+
+   **Figure.** Airmass weighting function for a target observed at a constant altitude.
+
 **Transit coverage scoring.**
 Baseline coverage before and after the transit is essential for fitting the light curve and
 recovering limb-darkening parameters. The observable fraction of each of five segments within
@@ -619,13 +639,19 @@ proportional to the SNR. The resulting moonlight noise weight is:
    W_\mathrm{Moon} = \left(1 + \frac{10^{-0.4(m_\mathrm{bg,moon} - \gamma)}}
                      {10^{-0.4 m_*} + 10^{-0.4 m_\mathrm{sky}}}\right)^{-0.5}
 
-where :math:`\gamma` is a configurable amplification factor that adjusts the effective
+where :math:`\gamma` is a configurable "moonlight amplification factor" that adjusts the effective
 moon background brightness to provide stronger suppression under bright moonlight conditions.
 The default value (:math:`\gamma = 10`) is calibrated such that, for a full-moon sky
 background of :math:`\mu_\mathrm{bg,moon} = 17\,\mathrm{mag/arcsec^2}`, a sky patch of
 area :math:`A = 10\,\mathrm{arcsec^2}`, and a target of magnitude
 :math:`m_* = 12`, the resulting moonlight noise weight is approximately
 :math:`W_\mathrm{Moon} \approx 0.1`.
+
+.. figure:: images/MoonlightMetric.png
+   :width: 95%
+   :align: center
+
+   **Figure.** Moonlight noise metric (Default aerosol parameters, Amplification factor 10) as a function of lunar illumination and the closest Moon-target separation. If you find the suppression too agressive, try reducing the amplification factor to 8-9.
 
 If ``toggle_moonlight_noise`` is disabled, :math:`W_\mathrm{Moon} = 1`.
 
@@ -648,6 +674,12 @@ If ``toggle_graph_outputs`` is enabled and the event weight :math:`W_\mathrm{eve
 the transit window and baseline shaded in red, and altitude floor and ceiling limits. Moon illumination
 and closest lunar separation are annotated. Plots are saved as JPEG files in ``phase_2/graph/`` per transit
 labelled with the event weight, internal rank, planet name, instrument, and transit time in local time.
+
+.. figure:: images/example_graph.jpg
+   :width: 80%
+   :align: center
+
+   **Figure.** Example graphical output for K2-83b predicted at TNT ULTRASPEC.
 
 **Per-planet output.**
 All computed quantities (contact times, internal rank, UTC observation start and end, airmass

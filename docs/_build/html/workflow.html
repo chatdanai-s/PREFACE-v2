@@ -106,13 +106,13 @@ list of transit events to direct observing efforts.</p>
 <p>The sections below describe each processing step in the order it is executed.</p>
 <nav class="contents local" id="contents">
 <ul class="simple">
-<li><p><a class="reference internal" href="#phase-one" id="id1">Phase One</a></p></li>
-<li><p><a class="reference internal" href="#phase-two" id="id2">Phase Two</a></p></li>
+<li><p><a class="reference internal" href="#phase-one" id="id6">Phase One</a></p></li>
+<li><p><a class="reference internal" href="#phase-two" id="id7">Phase Two</a></p></li>
 </ul>
 </nav>
 <hr class="docutils" />
 <section id="phase-one">
-<h2><a class="toc-backref" href="#id1" role="doc-backlink">Phase One</a><a class="headerlink" href="#phase-one" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Phase One</a><a class="headerlink" href="#phase-one" title="Link to this heading"></a></h2>
 <p>Phase One produces a ranked subset of TEPCat planets deemed viable
 for transmission spectroscopy. It proceeds through seven steps:</p>
 <ul class="simple">
@@ -240,9 +240,16 @@ relation of Edmondson et al. (2023):</p>
 </tbody>
 </table>
 <p>The Neptunian-Jovian boundary is defined as the radius at which the mass-radius relation becomes degenerate for a Jovian planet
-with an equilibrium temperature of <span class="math notranslate nohighlight">\(T_\mathrm{eq} = 500\,\mathrm{K}\)</span>. Beyond this radius,  the mass-radius relation becomes
+with an equilibrium temperature of <span class="math notranslate nohighlight">\(T_\mathrm{eq} = 500\,\mathrm{K}\)</span>. Beyond this radius, the mass-radius relation becomes
 degenerate, and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate
 at the boundary is given. The final estimated mass is then converted from Earth masses to Jupiter masses before being stored.</p>
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="_images/MR_relation.png"><img alt="_images/MR_relation.png" src="_images/MR_relation.png" style="width: 95%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><strong>Figure.</strong> Left: Planet mass as a function of planetary radius for the ranked target sample. Right: Distribution of planetary radii, showing the fraction of targets with measured (blue) and unmeasured (orange) masses within each radius bin.</span><a class="headerlink" href="#id1" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 </section>
 <section id="step-5-rankmaker">
 <h3>Step 5: <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code><a class="headerlink" href="#step-5-rankmaker" title="Link to this heading"></a></h3>
@@ -266,7 +273,8 @@ by their expected spectroscopic return for the given instrument and filter combi
 <p>contains all telescope-dependent variables.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Habitable_Rank</span></code>: the standard metric restricted to planets in or near the habitable
-zone of their host star.</p></li>
+zone of their host star. This effectively sets <span class="math notranslate nohighlight">\(T_\mathrm{eq} = 1\)</span> for all targets,
+which can be followed by an application of a temperature mask afterwards.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Multi_Transit_Rank</span></code>: a metric weighted towards planets with frequent transits,
 suited to long-term monitoring campaigns:</p></li>
 </ul>
@@ -299,6 +307,13 @@ as inclusive as possible. No corresponding calibration instrument is defined for
 and identifies the minimum absolute rank score at which the cumulative fraction equals
 <code class="docutils literal notranslate"><span class="pre">viable_cumulative_cut</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">0.97</span></code>). This threshold score is returned and passed
 to the <code class="docutils literal notranslate"><span class="pre">ViabilitySplitter</span></code>.</p>
+<figure class="align-center" id="id2">
+<a class="reference internal image-reference" href="_images/Cutter.png"><img alt="_images/Cutter.png" src="_images/Cutter.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><strong>Figure.</strong> Cumulative fraction of the total ranking score contributed by the ranked target list. Horizontal dashed lines indicate the 0.80, 0.90, and 0.97 cumulative score thresholds.</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 </section>
 <section id="step-7-viabilitysplitter">
 <h3>Step 7: <code class="docutils literal notranslate"><span class="pre">ViabilitySplitter</span></code><a class="headerlink" href="#step-7-viabilitysplitter" title="Link to this heading"></a></h3>
@@ -319,7 +334,7 @@ of <code class="docutils literal notranslate"><span class="pre">0.90</span></cod
 </section>
 <hr class="docutils" />
 <section id="phase-two">
-<h2><a class="toc-backref" href="#id2" role="doc-backlink">Phase Two</a><a class="headerlink" href="#phase-two" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Phase Two</a><a class="headerlink" href="#phase-two" title="Link to this heading"></a></h2>
 <p>Phase Two takes the viable target list produced by Phase One and returns a ranked schedule
 of observable transit events within the user-specified observing window. For each planet,
 it propagates the transit ephemeris forward, evaluates every predicted event against
@@ -507,6 +522,13 @@ usable observing window:</p>
 \[W_\mathrm{airmass} = 3 \left( \frac{L_2-L_1}{\int_{L_1}^{L_2}X(t)^{3/5} dt} - \frac{2}{3} \right)\]</div>
 <p>The weight is amended to return a value of 1 for targets constantly at the zenith, decline steeply as
 altitude decreases, and have a value of 0 for targets constantly at <span class="math notranslate nohighlight">\(30^\circ\)</span> altitude.</p>
+<figure class="align-center" id="id3">
+<a class="reference internal image-reference" href="_images/AirmassMetric.png"><img alt="_images/AirmassMetric.png" src="_images/AirmassMetric.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><strong>Figure.</strong> Airmass weighting function for a target observed at a constant altitude.</span><a class="headerlink" href="#id3" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 <p><strong>Transit coverage scoring.</strong>
 Baseline coverage before and after the transit is essential for fitting the light curve and
 recovering limb-darkening parameters. The observable fraction of each of five segments within
@@ -650,13 +672,20 @@ proportional to the SNR. The resulting moonlight noise weight is:</p>
 <div class="math notranslate nohighlight">
 \[W_\mathrm{Moon} = \left(1 + \frac{10^{-0.4(m_\mathrm{bg,moon} - \gamma)}}
                   {10^{-0.4 m_*} + 10^{-0.4 m_\mathrm{sky}}}\right)^{-0.5}\]</div>
-<p>where <span class="math notranslate nohighlight">\(\gamma\)</span> is a configurable amplification factor that adjusts the effective
+<p>where <span class="math notranslate nohighlight">\(\gamma\)</span> is a configurable “moonlight amplification factor” that adjusts the effective
 moon background brightness to provide stronger suppression under bright moonlight conditions.
 The default value (<span class="math notranslate nohighlight">\(\gamma = 10\)</span>) is calibrated such that, for a full-moon sky
 background of <span class="math notranslate nohighlight">\(\mu_\mathrm{bg,moon} = 17\,\mathrm{mag/arcsec^2}\)</span>, a sky patch of
 area <span class="math notranslate nohighlight">\(A = 10\,\mathrm{arcsec^2}\)</span>, and a target of magnitude
 <span class="math notranslate nohighlight">\(m_* = 12\)</span>, the resulting moonlight noise weight is approximately
 <span class="math notranslate nohighlight">\(W_\mathrm{Moon} \approx 0.1\)</span>.</p>
+<figure class="align-center" id="id4">
+<a class="reference internal image-reference" href="_images/MoonlightMetric.png"><img alt="_images/MoonlightMetric.png" src="_images/MoonlightMetric.png" style="width: 95%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><strong>Figure.</strong> Moonlight noise metric (Default aerosol parameters, Amplification factor 10) as a function of lunar illumination and the closest Moon-target separation. If you find the suppression too agressive, try reducing the amplification factor to 8-9.</span><a class="headerlink" href="#id4" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 <p>If <code class="docutils literal notranslate"><span class="pre">toggle_moonlight_noise</span></code> is disabled, <span class="math notranslate nohighlight">\(W_\mathrm{Moon} = 1\)</span>.</p>
 <p><strong>Final transit decision metric.</strong>
 Finally, the final decision metric for a given transit event is the product of four terms:</p>
@@ -673,6 +702,13 @@ If <code class="docutils literal notranslate"><span class="pre">toggle_graph_out
 the transit window and baseline shaded in red, and altitude floor and ceiling limits. Moon illumination
 and closest lunar separation are annotated. Plots are saved as JPEG files in <code class="docutils literal notranslate"><span class="pre">phase_2/graph/</span></code> per transit
 labelled with the event weight, internal rank, planet name, instrument, and transit time in local time.</p>
+<figure class="align-center" id="id5">
+<a class="reference internal image-reference" href="_images/example_graph.jpg"><img alt="_images/example_graph.jpg" src="_images/example_graph.jpg" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><strong>Figure.</strong> Example graphical output for K2-83b predicted at TNT ULTRASPEC.</span><a class="headerlink" href="#id5" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 <p><strong>Per-planet output.</strong>
 All computed quantities (contact times, internal rank, UTC observation start and end, airmass
 metric, segment weights, event weight, moon noise metric, and final metric) are written to an

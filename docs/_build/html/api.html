@@ -115,7 +115,29 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="preface.run_preface">
 <span class="sig-prename descclassname"><span class="pre">preface.</span></span><span class="sig-name descname"><span class="pre">run_preface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">TelescopeConfigurations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#preface.configs.TelescopeConfigurations" title="preface.configs.TelescopeConfigurations"><span class="pre">TelescopeConfigurations</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">OutputConfigurations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#preface.configs.OutputConfigurations" title="preface.configs.OutputConfigurations"><span class="pre">OutputConfigurations</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">MoonlightNoiseConfigurations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#preface.configs.MoonlightNoiseConfigurations" title="preface.configs.MoonlightNoiseConfigurations"><span class="pre">MoonlightNoiseConfigurations</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MultiprocessingConfigurations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#preface.configs.MultiprocessingConfigurations" title="preface.configs.MultiprocessingConfigurations"><span class="pre">MultiprocessingConfigurations</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/preface.html#run_preface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#preface.run_preface" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Execute the complete PREFACE processing pipeline.</p>
+<p>This function orchestrates all stages of the PREFACE workflow,
+including Phase One (target score ranking), Phase Two (transit event filtering),
+parallel event processing, and final post-processing. The behavior of the
+pipeline is controlled through the provided configuration objects.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>TelescopeConfigurations</strong> (<a class="reference internal" href="#preface.configs.TelescopeConfigurations" title="preface.configs.TelescopeConfigurations"><em>TelescopeConfigurations</em></a>) – Configuration specifying the observing instrument, photometric
+filter, and telescope-related settings.</p></li>
+<li><p><strong>OutputConfigurations</strong> (<a class="reference internal" href="#preface.configs.OutputConfigurations" title="preface.configs.OutputConfigurations"><em>OutputConfigurations</em></a>) – Configuration specifying the observation window, output location,
+ranking metric type, viability threshold, and graph generation options.</p></li>
+<li><p><strong>MoonlightnoiseConfigurations</strong> (<a class="reference internal" href="#preface.configs.MoonlightNoiseConfigurations" title="preface.configs.MoonlightNoiseConfigurations"><em>MoonlightNoiseConfigurations</em></a>) – Configuration controlling moonlight noise modelling, including
+atmospheric scattering parameters and moonlight amplification factors.</p></li>
+<li><p><strong>MultiprocessingConfigurations</strong> (<a class="reference internal" href="#preface.configs.MultiprocessingConfigurations" title="preface.configs.MultiprocessingConfigurations"><em>MultiprocessingConfigurations</em></a>) – Configuration defining multiprocessing behavior and CPU core
+allocation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 <section id="configuration-classes">
@@ -170,7 +192,7 @@ and exoplanet ranking settings.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="preface.configs.MoonlightNoiseConfigurations">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">preface.configs.</span></span><span class="sig-name descname"><span class="pre">MoonlightNoiseConfigurations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">toggle_moonlight_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scattering_aod</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absorption_aod</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asymmetry_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">moonlight_amplification_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/preface/configs.html#MoonlightNoiseConfigurations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#preface.configs.MoonlightNoiseConfigurations" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">preface.configs.</span></span><span class="sig-name descname"><span class="pre">MoonlightNoiseConfigurations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">toggle_moonlight_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scattering_aod</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absorption_aod</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asymmetry_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">moonlight_amplification_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">9</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/preface/configs.html#MoonlightNoiseConfigurations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#preface.configs.MoonlightNoiseConfigurations" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Configuration container for moonlight background noise modelling.</p>
 <dl class="py property">
@@ -237,7 +259,7 @@ which both zero-point magnitude (<code class="docutils literal notranslate"><spa
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>instrument</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Name of the telescope or instrument as listed in <code class="docutils literal notranslate"><span class="pre">Scope.csv</span></code>.
-See preface.telescope_list for list of available telescopes.</p>
+See <code class="docutils literal notranslate"><span class="pre">preface.telescope_list</span></code> for list of available telescopes.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Alphabetically sorted list of supported filter names.</p>

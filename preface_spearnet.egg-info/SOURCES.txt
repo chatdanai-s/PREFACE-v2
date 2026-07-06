@@ -28,24 +28,6 @@ preface/csvbank/core/exoplaneteu_catalog.csv
 preface/csvbank/core/filter_information.csv
 preface/csvbank/core/kepplanets-csv.csv
 preface/csvbank/core/observables.csv
-preface/csvbank/core/unused/ExoplaneteuImpacts.csv
-preface/csvbank/core/unused/FullTEPSetWithAllImpacts-Intermediate.csv
-preface/csvbank/core/unused/FullTESS_Set.csv
-preface/csvbank/core/unused/K_Spectral_Corrections_Bank_Old.csv
-preface/csvbank/core/unused/MWexoplaneteu_catalog.csv
-preface/csvbank/core/unused/MWexoplaneteu_catalog.xlsx
-preface/csvbank/core/unused/RankedTEPSet_DOT_TIRCAM2_K-band_for_Half_Well_Y_Noise_N.csv
-preface/csvbank/core/unused/TESS_CSV_Columns.odt
-preface/csvbank/core/unused/TOI_2019.09.02_07.35.11.csv
-preface/csvbank/core/unused/V_Spectral_Corrections_Bank_Old.csv
-preface/csvbank/core/unused/WorkingTESS_Set.csv
-preface/csvbank/core/unused/calculation of impact parameter.xlsx
-preface/csvbank/core/unused/exoplaneteu_catalog1.5.csv
-preface/csvbank/core/unused/exoplaneteu_catalog2.csv
-preface/csvbank/core/unused/exoplaneteu_catalog_2025_06_11.csv
-preface/csvbank/core/unused/homogeneous-input-csv.csv
-preface/csvbank/core/unused/homogeneous-par-csv.csv
-preface/csvbank/core/unused/transitspec.csv
 preface/supplementary_files/PREFACE Notes.pdf
 preface/supplementary_files/ScopeRecords.pdf
 preface/unused_code/P1_InputCheck.py

@@ -338,10 +338,10 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
     # Multiprocessing start
     if toggle_multiprocessing == True:
         cores_actually_used = cores_used
-        print(f'+++ Phase Two: Multiprocessing engaged for {cores_actually_used} cores. +++')
+        print(f'\n+++ Phase Two: Multiprocessing engaged for {cores_actually_used} cores. +++\n')
     elif toggle_multiprocessing == False:
         cores_actually_used = 1
-        print(f'+++ Phase Two: Engaged for 1 core. +++')
+        print(f'\n+++ Phase Two: Engaged for 1 core. +++\n')
     
 
     # Directory of all Phase Two Inputs (dont touch!)
@@ -372,10 +372,10 @@ def P2Wrap(CSV_core_folder, CSV_intermediate_folder, output_folder,
             ) for csv_initiated in jobs
         )
 
-        for _ in tqdm(job, total=len(jobs), desc="CSVs completed"):
+        for _ in tqdm(job, total=len(jobs), desc=">> CSVs completed"):
             pass
 
-    print(f'+++ Multiprocessing complete! +++')
+    print(f'\n+++ Multiprocessing complete! +++\n')
 
     return filename_pattern, cores_actually_used
     

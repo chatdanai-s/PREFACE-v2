@@ -69,16 +69,10 @@ Step 3: ``ExoplanetseuImpactMerger``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For planets still missing :math:`b` after Step 2, a second cross-match is performed
-against a snapshot of the exoplanets.eu catalogue (currently 24 June, 2026). Although this catalogue holds fewer
-:math:`b`-values overall, it tends to be more up to date for recent discoveries. Planets
-appearing in both catalogues receive their impact parameters in this pass. The updated
-catalogue is saved as ``FullTEPSetWithAllImpacts.csv``.
-
-.. note::
-   At the time of initial deployment (September 2017), this two-pass recovery successfully retrieved
-   literature impact parameters for 1,213 of 1,451 TEPCat entries (83.6%). The two
-   external catalogue snapshots are static; the recovery rate may decline gradually as
-   TEPCat continues to be updated with new discoveries.
+against a snapshot of the exoplanets.eu catalogue (automatically updated if older than 7 days).
+Although this catalogue holds fewer :math:`b`-values overall, it tends to be more up to date
+for recent discoveries. Planets appearing in both catalogues receive their impact parameters in this pass.
+The updated catalogue is saved as ``FullTEPSetWithAllImpacts.csv``.
 
 Step 4: ``WorkingTEPSetBuilder``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

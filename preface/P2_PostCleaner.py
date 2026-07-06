@@ -14,7 +14,7 @@ from preface.P1_ImpactMerger import BWriter
 # Concatenation function
 def get_merged_csv(filelist, cores_used):
     dfs = Parallel(n_jobs=cores_used, backend='loky')(
-        delayed(pd.read_csv)(f) for f in tqdm(filelist, desc='CSVs merged')
+        delayed(pd.read_csv)(f) for f in tqdm(filelist, desc='>> CSVs merged')
     )
     return pd.concat(dfs, ignore_index=True)
 

@@ -240,5 +240,5 @@ def run_preface(
         *TelescopeConfigurations.unpack, metric_mode, viable_cumulative_cut,
         obs_start, obs_end, cores_actually_used
     )
-    
-    print('PREFACE run complete.')
+
+    print('\nPREFACE run complete.\n')

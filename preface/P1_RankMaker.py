@@ -228,11 +228,22 @@ def RankMaker(CSV_core_folder, CSV_intermediate_folder,
         Mp = row['Mp'] if pd.notna(row['Mp']) else row['Mp_Calc']
         Teq = row['Teq_Calc']
         mJ = row['Jmag']
-        ScaleFactor = 1
 
         # Convert to appropriate units
         Rp = (Rp * u.jupiterRad).to(u.earthRad).value
         Mp = (Mp * u.jupiterMass).to(u.earthMass).value
+
+        # Scale factor
+        if Rp < 1.5:
+            ScaleFactor = 0.190
+        elif Rp < 2.75:
+            ScaleFactor = 1.26
+        elif Rp < 4.0:
+            ScaleFactor = 1.28
+        elif Rp < 10.:
+            ScaleFactor = 1.15
+        elif Rp >= 10.:
+            ScaleFactor = 1
 
         TSM = ScaleFactor * (Rp**3 * Teq) / (Mp * Rs**2) * 10**(-0.2 * mJ)
         return TSM

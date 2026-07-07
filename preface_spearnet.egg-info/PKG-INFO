@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: preface-spearnet
-Version: 2.0.0b6
+Version: 2.0.0b7
 Summary: An Automated Pipeline for the Selection of Transmission Spectroscopy Candidates
 Author-email: Chatdanai Sawangwong <chatdanai.saw@gmail.com>, Supachai Awiphan <supachai@narit.or.th>, Orarik Tasuya <orarik@narit.or.th>, Napaporn A-thano <napaporn@narit.or.th>
 License: MIT
@@ -156,7 +156,6 @@ If you use **PREFACE** in academic work, please cite the associated publications
 ---
 
 ## To-do List
-- [ ] (Maybe) Implement automatic exoplanets.eu API querying
 - [ ] (Maybe) Month- and location-dependent aerosol scattering parameters via end-to-end AERONET data retrieval
 
  -->

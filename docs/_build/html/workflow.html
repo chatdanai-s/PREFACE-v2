@@ -106,13 +106,13 @@ list of transit events to direct observing efforts.</p>
 <p>The sections below describe each processing step in the order it is executed.</p>
 <nav class="contents local" id="contents">
 <ul class="simple">
-<li><p><a class="reference internal" href="#phase-one" id="id6">Phase One</a></p></li>
-<li><p><a class="reference internal" href="#phase-two" id="id7">Phase Two</a></p></li>
+<li><p><a class="reference internal" href="#phase-one" id="id8">Phase One</a></p></li>
+<li><p><a class="reference internal" href="#phase-two" id="id9">Phase Two</a></p></li>
 </ul>
 </nav>
 <hr class="docutils" />
 <section id="phase-one">
-<h2><a class="toc-backref" href="#id6" role="doc-backlink">Phase One</a><a class="headerlink" href="#phase-one" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Phase One</a><a class="headerlink" href="#phase-one" title="Link to this heading"></a></h2>
 <p>Phase One produces a ranked subset of TEPCat planets deemed viable
 for transmission spectroscopy. It proceeds through seven steps:</p>
 <ul class="simple">
@@ -160,17 +160,17 @@ receives its literature impact parameter at this stage. The result is written ou
 <section id="step-3-exoplanetseuimpactmerger">
 <h3>Step 3: <code class="docutils literal notranslate"><span class="pre">ExoplanetseuImpactMerger</span></code><a class="headerlink" href="#step-3-exoplanetseuimpactmerger" title="Link to this heading"></a></h3>
 <p>For planets still missing <span class="math notranslate nohighlight">\(b\)</span> after Step 2, a second cross-match is performed
-against a snapshot of the exoplanets.eu catalogue (currently 24 June, 2026). Although this catalogue holds fewer
-<span class="math notranslate nohighlight">\(b\)</span>-values overall, it tends to be more up to date for recent discoveries. Planets
-appearing in both catalogues receive their impact parameters in this pass. The updated
-catalogue is saved as <code class="docutils literal notranslate"><span class="pre">FullTEPSetWithAllImpacts.csv</span></code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>At the time of initial deployment (September 2017), this two-pass recovery successfully retrieved
-literature impact parameters for 1,213 of 1,451 TEPCat entries (83.6%). The two
-external catalogue snapshots are static; the recovery rate may decline gradually as
-TEPCat continues to be updated with new discoveries.</p>
-</div>
+against a snapshot of the exoplanet.eu catalogue (automatically updated if older than 7 days).
+Although this catalogue holds fewer <span class="math notranslate nohighlight">\(b\)</span>-values overall, it tends to be more up to date
+for recent discoveries. Planets appearing in both catalogues receive their impact parameters in this pass.
+The updated catalogue is saved as <code class="docutils literal notranslate"><span class="pre">FullTEPSetWithAllImpacts.csv</span></code>.</p>
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="_images/b_retrieval.png"><img alt="_images/b_retrieval.png" src="_images/b_retrieval.png" style="width: 95%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><strong>Figure.</strong> Retrieval of transit impact parameters to FullTEPSet as of 7 July 2026. Includes the number of planets whose <cite>b</cite>-values were obtained from exoplanets.org (blue), additionally recovered from exoplanet.eu (orange), and those unavailable from either source (gray).</span><a class="headerlink" href="#id1" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 </section>
 <section id="step-4-workingtepsetbuilder">
 <h3>Step 4: <code class="docutils literal notranslate"><span class="pre">WorkingTEPSetBuilder</span></code><a class="headerlink" href="#step-4-workingtepsetbuilder" title="Link to this heading"></a></h3>
@@ -208,9 +208,9 @@ analytically using the transit geometry model of Seager &amp; Mallén-Ornelas (2
          \frac{a}{R_*} \tan \left[ \frac{\pi t_{14}}{P} \right]
      \right)^2
 }\]</div>
-<p><strong>Planet mass estimation.</strong> Planetary masses cannot be derived using transit parameters alone, yet
-mass is required by the metric calculation for planets. For planets lacking a literature mass, PREFACE
-estimates <span class="math notranslate nohighlight">\(M_p\)</span> from the planet’s radius using the continuous mass-radius-temperature
+<p><strong>Planet mass estimation.</strong>
+For planets lacking a literature mass, PREFACE estimates <span class="math notranslate nohighlight">\(M_p\)</span> from
+the planet’s radius using the continuous mass-radius-temperature
 relation of Edmondson et al. (2023):</p>
 <table class="docutils align-default">
 <colgroup>
@@ -243,11 +243,11 @@ relation of Edmondson et al. (2023):</p>
 with an equilibrium temperature of <span class="math notranslate nohighlight">\(T_\mathrm{eq} = 500\,\mathrm{K}\)</span>. Beyond this radius, the mass-radius relation becomes
 degenerate, and a unique mass estimate is not recoverable from radius alone, therefore a conservative lower-bound mass estimate
 at the boundary is given. The final estimated mass is then converted from Earth masses to Jupiter masses before being stored.</p>
-<figure class="align-center" id="id1">
+<figure class="align-center" id="id2">
 <a class="reference internal image-reference" href="_images/MR_relation.png"><img alt="_images/MR_relation.png" src="_images/MR_relation.png" style="width: 95%;" />
 </a>
 <figcaption>
-<p><span class="caption-text"><strong>Figure.</strong> Left: Planet mass as a function of planetary radius for the ranked target sample. Right: Distribution of planetary radii, showing the fraction of targets with measured (blue) and unmeasured (orange) masses within each radius bin.</span><a class="headerlink" href="#id1" title="Link to this image"></a></p>
+<p><span class="caption-text"><strong>Figure.</strong> Left: Planet mass as a function of planetary radius for the ranked target sample. Right: Distribution of planetary radii, showing the fraction of targets with measured (blue) and unmeasured (orange) masses within each radius bin.</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 </section>
@@ -255,9 +255,10 @@ at the boundary is given. The final estimated mass is then converted from Earth 
 <h3>Step 5: <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code><a class="headerlink" href="#step-5-rankmaker" title="Link to this heading"></a></h3>
 <p>For each planet in the working catalogue, <code class="docutils literal notranslate"><span class="pre">RankMaker</span></code> uses the chosen instrument’s detector
 properties to compute an optimum exposure time and an approximate signal-to-noise ratio per planet.
-These quantities are used to evaluate the Phase One selection metric, which ranks planets
+These quantities are used to evaluate the Phase One “decision metric”, which ranks planets
 by their expected spectroscopic return for the given instrument and filter combination.</p>
-<p>Metric scores are computed for all four available metric modes simultaneously:</p>
+<p><strong>The decision metric.</strong>
+Metric scores are computed for all four available metric modes simultaneously:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Rank</span></code>: the standard photometric transmission spectroscopy metric (Morgan et al. 2019):</p></li>
 </ul>
@@ -293,6 +294,63 @@ metric mode (via <code class="docutils literal notranslate"><span class="pre">me
 sense. They are proportionality estimates used for ranking and are not a substitute for
 a dedicated exposure-time calculator when planning actual observations.</p>
 </div>
+<p><strong>Transmission Spectroscopy Metric (TSM).</strong>
+In addition to the decision metric, PREFACE also evaluates the Transmission Spectroscopy Metric
+(TSM) of Kempton et al. (2018):</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{TSM} = \mathcal{S} \cdot \,
+\frac{R_p^3 \, T_\mathrm{eq}}
+     {M_p \, R_\star^2}
+\cdot 10^{-0.2m_J}\]</div>
+<p>where <span class="math notranslate nohighlight">\(R_p\)</span> and <span class="math notranslate nohighlight">\(M_p\)</span> are in Earth radii and masses respectively,
+<span class="math notranslate nohighlight">\(T_\mathrm{eq}\)</span> is the calculated equilibrium temperature in Kelvins,
+<span class="math notranslate nohighlight">\(R_\star\)</span> is the stellar radius in solar radii, <span class="math notranslate nohighlight">\(m_J\)</span> is the host star’s
+J-band magnitude, and <span class="math notranslate nohighlight">\(\mathcal{S}\)</span> is an empirically calibrated scale factor.</p>
+<p>The planetary mass is taken from the literature when available; otherwise,
+the estimated mass described above is adopted. The scale factor in the Jovian
+regime is adopted to be 1, as the original calibration does not extend beyond 10 <span class="math notranslate nohighlight">\(R_\oplus\)</span>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 31.2%" />
+<col style="width: 43.8%" />
+<col style="width: 25.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Planet regime</p></th>
+<th class="head"><p>Condition</p></th>
+<th class="head"><p>Scale factor <span class="math notranslate nohighlight">\(S\)</span></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Terrestrial</p></td>
+<td><p><span class="math notranslate nohighlight">\(R_p &lt; 1.5\,R_\oplus\)</span></p></td>
+<td><p>0.190</p></td>
+</tr>
+<tr class="row-odd"><td><p>Super-Earth</p></td>
+<td><p><span class="math notranslate nohighlight">\(1.5 \leq R_p &lt; 2.75\,R_\oplus\)</span></p></td>
+<td><p>1.26</p></td>
+</tr>
+<tr class="row-even"><td><p>Sub-Neptune</p></td>
+<td><p><span class="math notranslate nohighlight">\(2.75 \leq R_p &lt; 4.0\,R_\oplus\)</span></p></td>
+<td><p>1.28</p></td>
+</tr>
+<tr class="row-odd"><td><p>Sub-Jovian</p></td>
+<td><p><span class="math notranslate nohighlight">\(4.0 \leq R_p &lt; 10.0\,R_\oplus\)</span></p></td>
+<td><p>1.15</p></td>
+</tr>
+<tr class="row-even"><td><p>Jovian</p></td>
+<td><p><span class="math notranslate nohighlight">\(R_p \geq 10.0\,R_\oplus\)</span></p></td>
+<td><p>1</p></td>
+</tr>
+</tbody>
+</table>
+<figure class="align-center" id="id3">
+<a class="reference internal image-reference" href="_images/Rank_vs_TSM.png"><img alt="_images/Rank_vs_TSM.png" src="_images/Rank_vs_TSM.png" style="width: 65%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><strong>Figure.</strong> Planet rank compared to their respective TSMs in log-log space, with points colored according to the five TSM scale factor regimes.</span><a class="headerlink" href="#id3" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 </section>
 <section id="step-6-cutter">
 <h3>Step 6: <code class="docutils literal notranslate"><span class="pre">Cutter</span></code><a class="headerlink" href="#step-6-cutter" title="Link to this heading"></a></h3>
@@ -307,11 +365,11 @@ as inclusive as possible. No corresponding calibration instrument is defined for
 and identifies the minimum absolute rank score at which the cumulative fraction equals
 <code class="docutils literal notranslate"><span class="pre">viable_cumulative_cut</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">0.97</span></code>). This threshold score is returned and passed
 to the <code class="docutils literal notranslate"><span class="pre">ViabilitySplitter</span></code>.</p>
-<figure class="align-center" id="id2">
+<figure class="align-center" id="id4">
 <a class="reference internal image-reference" href="_images/Cutter.png"><img alt="_images/Cutter.png" src="_images/Cutter.png" style="width: 85%;" />
 </a>
 <figcaption>
-<p><span class="caption-text"><strong>Figure.</strong> Cumulative fraction of the total ranking score contributed by the ranked target list. Horizontal dashed lines indicate the 0.80, 0.90, and 0.97 cumulative score thresholds.</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
+<p><span class="caption-text"><strong>Figure.</strong> Cumulative fraction of the total ranking score contributed by the ranked target list. Horizontal dashed lines indicate the 0.80, 0.90, and 0.97 cumulative score thresholds.</span><a class="headerlink" href="#id4" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 </section>
@@ -334,7 +392,7 @@ of <code class="docutils literal notranslate"><span class="pre">0.90</span></cod
 </section>
 <hr class="docutils" />
 <section id="phase-two">
-<h2><a class="toc-backref" href="#id7" role="doc-backlink">Phase Two</a><a class="headerlink" href="#phase-two" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Phase Two</a><a class="headerlink" href="#phase-two" title="Link to this heading"></a></h2>
 <p>Phase Two takes the viable target list produced by Phase One and returns a ranked schedule
 of observable transit events within the user-specified observing window. For each planet,
 it propagates the transit ephemeris forward, evaluates every predicted event against
@@ -522,11 +580,11 @@ usable observing window:</p>
 \[W_\mathrm{airmass} = 3 \left( \frac{L_2-L_1}{\int_{L_1}^{L_2}X(t)^{3/5} dt} - \frac{2}{3} \right)\]</div>
 <p>The weight is amended to return a value of 1 for targets constantly at the zenith, decline steeply as
 altitude decreases, and have a value of 0 for targets constantly at <span class="math notranslate nohighlight">\(30^\circ\)</span> altitude.</p>
-<figure class="align-center" id="id3">
+<figure class="align-center" id="id5">
 <a class="reference internal image-reference" href="_images/AirmassMetric.png"><img alt="_images/AirmassMetric.png" src="_images/AirmassMetric.png" style="width: 80%;" />
 </a>
 <figcaption>
-<p><span class="caption-text"><strong>Figure.</strong> Airmass weighting function for a target observed at a constant altitude.</span><a class="headerlink" href="#id3" title="Link to this image"></a></p>
+<p><span class="caption-text"><strong>Figure.</strong> Airmass weighting function for a target observed at a constant altitude.</span><a class="headerlink" href="#id5" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p><strong>Transit coverage scoring.</strong>
@@ -679,11 +737,11 @@ background of <span class="math notranslate nohighlight">\(\mu_\mathrm{bg,moon} 
 area <span class="math notranslate nohighlight">\(A = 10\,\mathrm{arcsec^2}\)</span>, and a target of magnitude
 <span class="math notranslate nohighlight">\(m_* = 12\)</span>, the resulting moonlight noise weight is approximately
 <span class="math notranslate nohighlight">\(W_\mathrm{Moon} \approx 0.1\)</span>.</p>
-<figure class="align-center" id="id4">
-<a class="reference internal image-reference" href="_images/MoonlightMetric.png"><img alt="_images/MoonlightMetric.png" src="_images/MoonlightMetric.png" style="width: 95%;" />
+<figure class="align-center" id="id6">
+<a class="reference internal image-reference" href="_images/MoonlightMetric.png"><img alt="_images/MoonlightMetric.png" src="_images/MoonlightMetric.png" style="width: 99%;" />
 </a>
 <figcaption>
-<p><span class="caption-text"><strong>Figure.</strong> Moonlight noise metric (Default aerosol parameters, Amplification factor 10) as a function of lunar illumination and the closest Moon-target separation. If you find the suppression too agressive, try reducing the amplification factor to 8-9.</span><a class="headerlink" href="#id4" title="Link to this image"></a></p>
+<p><span class="caption-text"><strong>Figure.</strong> Moonlight noise metric (Default aerosol parameters, Amplification factor 10) as a function of lunar illumination and the closest Moon-target separation. If you find the suppression too aggressive, try reducing the amplification factor to 8-9.</span><a class="headerlink" href="#id6" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p>If <code class="docutils literal notranslate"><span class="pre">toggle_moonlight_noise</span></code> is disabled, <span class="math notranslate nohighlight">\(W_\mathrm{Moon} = 1\)</span>.</p>
@@ -700,13 +758,13 @@ If <code class="docutils literal notranslate"><span class="pre">toggle_graph_out
 <code class="docutils literal notranslate"><span class="pre">event_weight_graph_threshold</span></code>, a sky chart is generated showing the target’s altitude path
 (coloured by azimuth), the Moon’s path, the observing night bounded by astronomical twilight,
 the transit window and baseline shaded in red, and altitude floor and ceiling limits. Moon illumination
-and closest lunar separation are annotated. Plots are saved as JPEG files in <code class="docutils literal notranslate"><span class="pre">phase_2/graph/</span></code> per transit
+and closest lunar separation are annotated. Plots are saved as JPG files in <code class="docutils literal notranslate"><span class="pre">phase_2/graph/</span></code> per transit
 labelled with the event weight, internal rank, planet name, instrument, and transit time in local time.</p>
-<figure class="align-center" id="id5">
-<a class="reference internal image-reference" href="_images/example_graph.jpg"><img alt="_images/example_graph.jpg" src="_images/example_graph.jpg" style="width: 80%;" />
+<figure class="align-center" id="id7">
+<a class="reference internal image-reference" href="_images/example_graph.jpg"><img alt="_images/example_graph.jpg" src="_images/example_graph.jpg" style="width: 99%;" />
 </a>
 <figcaption>
-<p><span class="caption-text"><strong>Figure.</strong> Example graphical output for K2-83b predicted at TNT ULTRASPEC.</span><a class="headerlink" href="#id5" title="Link to this image"></a></p>
+<p><span class="caption-text"><strong>Figure.</strong> Example graphical output for K2-83b predicted at TNT ULTRASPEC.</span><a class="headerlink" href="#id7" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p><strong>Per-planet output.</strong>
@@ -722,13 +780,13 @@ of each planet’s processing to prepare for the next job.</p>
 <p><strong>Full event list.</strong> All per-planet CSV files are read then merged into a single DataFrame.
 Unobservable events (internal rank <code class="docutils literal notranslate"><span class="pre">X</span></code>) are removed. The remaining events are sorted by
 final transit metric <span class="math notranslate nohighlight">\(\mathcal{D}_\mathrm{final}\)</span> from highest to lowest and
-written to <code class="docutils literal notranslate"><span class="pre">full_ranked_event_list/</span></code>. This file is the primary output of the pipeline
+written to <code class="docutils literal notranslate"><span class="pre">phase_2/full_ranked_event_list/</span></code>. This file is the primary output of the pipeline
 and can be used directly to construct observing schedules.</p>
 <p><strong>Cumulative observability scores.</strong> For each planet, all events for which event weight
 <span class="math notranslate nohighlight">\(W_\mathrm{event} &gt; 0.5\)</span> (full transit capture with at least 50% baseline coverage
 on both sides) are identified. Their <span class="math notranslate nohighlight">\(\cal{D}_\mathrm{final}\)</span> scores are summed
 to produce a “cumulative observability score”, and the total count of qualifying events is
-recorded. These results are written to <code class="docutils literal notranslate"><span class="pre">cumulative_observability_scores/</span></code>.</p>
+recorded. These results are written to <code class="docutils literal notranslate"><span class="pre">phase_2/cumulative_observability_scores/</span></code>.</p>
 <p>This product is intended to help campaign planners distinguish between planets that offer
 a single high-priority window and those that present multiple well-scored opportunities
 throughout the observation window.</p>

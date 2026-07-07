@@ -69,10 +69,16 @@ Step 3: ``ExoplanetseuImpactMerger``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For planets still missing :math:`b` after Step 2, a second cross-match is performed
-against a snapshot of the exoplanets.eu catalogue (automatically updated if older than 7 days).
+against a snapshot of the exoplanet.eu catalogue (automatically updated if older than 7 days).
 Although this catalogue holds fewer :math:`b`-values overall, it tends to be more up to date
 for recent discoveries. Planets appearing in both catalogues receive their impact parameters in this pass.
 The updated catalogue is saved as ``FullTEPSetWithAllImpacts.csv``.
+
+.. figure:: images/b_retrieval.png
+   :width: 95%
+   :align: center
+
+   **Figure.** Retrieval of transit impact parameters to FullTEPSet as of 7 July 2026. Includes the number of planets whose `b`-values were obtained from exoplanets.org (blue), additionally recovered from exoplanet.eu (orange), and those unavailable from either source (gray).
 
 Step 4: ``WorkingTEPSetBuilder``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -124,9 +130,9 @@ analytically using the transit geometry model of Seager & Mallén-Ornelas (2003)
         \right)^2
    }
 
-**Planet mass estimation.** Planetary masses cannot be derived using transit parameters alone, yet
-mass is required by the metric calculation for planets. For planets lacking a literature mass, PREFACE
-estimates :math:`M_p` from the planet's radius using the continuous mass-radius-temperature
+**Planet mass estimation.**
+For planets lacking a literature mass, PREFACE estimates :math:`M_p` from
+the planet's radius using the continuous mass-radius-temperature
 relation of Edmondson et al. (2023):
  
 .. list-table::
@@ -136,7 +142,7 @@ relation of Edmondson et al. (2023):
    * - Regime
      - Condition
      - Power-law applied
-   * - Rocky
+   * - Terrestrial
      - :math:`R_p < 1.580 \,R_\oplus`
      - :math:`M_p = \left(R_p / 1.01\right)^{1/0.28}\,M_\oplus`
    * - Neptunian
@@ -163,9 +169,10 @@ Step 5: ``RankMaker``
 
 For each planet in the working catalogue, ``RankMaker`` uses the chosen instrument's detector
 properties to compute an optimum exposure time and an approximate signal-to-noise ratio per planet.
-These quantities are used to evaluate the Phase One selection metric, which ranks planets
+These quantities are used to evaluate the Phase One "decision metric", which ranks planets
 by their expected spectroscopic return for the given instrument and filter combination.
 
+**The decision metric.**
 Metric scores are computed for all four available metric modes simultaneously:
 
 - ``Rank``: the standard photometric transmission spectroscopy metric (Morgan et al. 2019):
@@ -207,6 +214,55 @@ metric mode (via ``metric_mode``) without rerunning Phase One from scratch.
    Exposure times and SNR values produced at this step are meaningful only in a relative
    sense. They are proportionality estimates used for ranking and are not a substitute for
    a dedicated exposure-time calculator when planning actual observations.
+
+**Transmission Spectroscopy Metric (TSM).**
+In addition to the decision metric, PREFACE also evaluates the Transmission Spectroscopy Metric
+(TSM) of Kempton et al. (2018):
+
+.. math::
+
+   \mathrm{TSM} = \mathcal{S} \cdot \,
+   \frac{R_p^3 \, T_\mathrm{eq}}
+        {M_p \, R_\star^2}
+   \cdot 10^{-0.2m_J}
+
+where :math:`R_p` and :math:`M_p` are in Earth radii and masses respectively,
+:math:`T_\mathrm{eq}` is the calculated equilibrium temperature in Kelvin,
+:math:`R_\star` is the stellar radius in solar radii, :math:`m_J` is the host star's
+J-band magnitude, and :math:`\mathcal{S}` is an empirically calibrated scale factor.
+
+The planetary mass is taken from the literature when available; otherwise,
+the estimated mass described above is adopted. The scale factor in the Jovian
+regime is adopted to be 1, as the original calibration does not extend beyond 10 :math:`R_\oplus`.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 35 20
+
+   * - Planet regime
+     - Condition
+     - Scale factor :math:`S`
+   * - Terrestrial
+     - :math:`R_p < 1.5\,R_\oplus`
+     - 0.190
+   * - Super-Earth
+     - :math:`1.5 \leq R_p < 2.75\,R_\oplus`
+     - 1.26
+   * - Sub-Neptune
+     - :math:`2.75 \leq R_p < 4.0\,R_\oplus`
+     - 1.28
+   * - Sub-Jovian
+     - :math:`4.0 \leq R_p < 10.0\,R_\oplus`
+     - 1.15
+   * - Jovian
+     - :math:`R_p \geq 10.0\,R_\oplus`
+     - 1
+
+.. figure:: images/Rank_vs_TSM.png
+   :width: 67%
+   :align: center
+
+   **Figure.** Planet rank compared to their respective TSMs, with points colored according to the five TSM scale factor regimes.
 
 Step 6: ``Cutter``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

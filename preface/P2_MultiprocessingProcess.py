@@ -36,6 +36,11 @@ from dateutil.relativedelta import relativedelta
 
 # Forces astropy to use IERS cache
 from astropy.utils import iers
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message=".*Tried to get polar motions for times after IERS data is valid.*"
+)
 iers.conf.auto_max_age = None
 iers.conf.auto_download = False
 

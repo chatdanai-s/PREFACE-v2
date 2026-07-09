@@ -102,6 +102,11 @@ def interpolate_altaz(obs_times, altazs, dense_times):
 # The hash used to denote the file also updates every 7 days, so this must also be tracked and updated in a .txt file.
 def download_IERS(CSV_core_folder):
     from astropy.utils import iers
+    import warnings
+    warnings.filterwarnings(
+        "ignore",
+        message=".*Tried to get polar motions for times after IERS data is valid.*"
+    )
     iers.conf.auto_max_age = None
     iers.conf.auto_download = False
 

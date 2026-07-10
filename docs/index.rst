@@ -1,10 +1,9 @@
 PREFACE Documentation
 =====================
 
-**P**\ rioritization and **R**\ anking of **E**\ xoplanets **F**\ or **A**\ stronomical
-**C**\ haracterization and **E**\ xploration (**PREFACE**) is a Python package containing
-an end-to-end pipeline for selection of promising exoplanet transmission spectroscopy observations
-based on their expected scientific return and observational feasibility.
+**P**ipeline for **R**anking **E**xoplanets For **A**tmospheric **C**haract**E**rization (**PREFACE**)
+is a Python package containing an end-to-end pipeline for selection of promising exoplanet transmission
+spectroscopy observations based on their expected scientific return and observational feasibility.
 
 PREFACE combines telescope characteristics, target properties, observing windows,
 detector effects, airmass, and optional moonlight modelling to produce numerically

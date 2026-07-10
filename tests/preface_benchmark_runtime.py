@@ -18,7 +18,7 @@ OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
 ObsStart = dt.datetime(2027,1,1)
 
 TOTAL_CPU_CORES = 12
-CORES_TO_TEST = [10]           # Actual cores used
+CORES_TO_TEST = [3]           # Actual cores used
 MONTHS_TO_TEST = [1, 2, 3, 4]
 
 results = []

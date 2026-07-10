@@ -1,6 +1,6 @@
 # PREFACE
 
-**P**rioritization and **R**anking of **E**xoplanets **F**or **A**stronomical **C**haracterization and **E**xploration (**PREFACE**) is a Python package for selection of promising exoplanet transmission spectroscopy observations based on their expected scientific return and observational feasibility.
+**P**ipeline for **R**anking **E**xoplanets For **A**tmospheric **C**haract**E**rization (**PREFACE**) is a Python package for selection of promising exoplanet transmission spectroscopy observations based on their expected scientific return and observational feasibility.
 
 ---
 

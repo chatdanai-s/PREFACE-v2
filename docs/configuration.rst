@@ -121,7 +121,7 @@ Defines the observation timing window, output directory, and ranking behaviour.
      - ``float``
      - Fraction of cumulative viability retained.
      - Between ``0`` and ``1`` (``0.90`` to ``0.97`` recommended).
-     - ``0.90``
+     - ``0.97``
    * - ``toggle_graph_outputs``
      - ``bool``
      - Produce diagnostic plots per transit.

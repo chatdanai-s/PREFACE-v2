@@ -177,7 +177,7 @@ class OutputConfigurations:
         observation_end: datetime,
         output_folder: str | Path,
         metric_mode="Rank",
-        viable_cumulative_cut=0.90,
+        viable_cumulative_cut=0.97,
         toggle_graph_outputs=True,
         event_weight_graph_threshold=0.75,
     ):
@@ -197,7 +197,7 @@ class OutputConfigurations:
             Ranking metric used for event prioritization.
             Must be one of ``"Rank"``, ``"Habitable_Rank"``,
             ``"Multi_Transit_Rank"``, or ``"Multi_Transit_Habitable_Rank"``.
-        viable_cumulative_cut : float, default=0.90
+        viable_cumulative_cut : float, default=0.97
             Cumulative viability threshold between 0 and 1.
         toggle_graph_outputs : bool, default=True
             Whether diagnostic plots for each transit event should be generated.
@@ -310,7 +310,7 @@ class MoonlightNoiseConfigurations:
         scattering_aod=0.2,
         absorption_aod=0.3,
         asymmetry_factor=0.6,
-        moonlight_amplification_factor=9,
+        moonlight_amplification_factor=10,
     ):
         """
         Initialize and validate moonlight noise model parameters
